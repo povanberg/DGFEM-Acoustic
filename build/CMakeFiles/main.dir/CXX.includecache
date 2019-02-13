@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+C:/Users/ORBBE/Desktop/Projet_Integre/MATH0471-DG/srcs/main.cpp
+cstdio
+-
+iostream
+-
+gmsh.h
+-
+
+C:/local/gmsh-4.1.4-Windows64-sdk/include/gmsh.h
+cmath
+-
+vector
+-
+string
+-
+utility
+-
+

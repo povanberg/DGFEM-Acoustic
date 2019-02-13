@@ -1,0 +1,4 @@
+# programs
+SET(SRCS main.cpp)
+ADD_EXECUTABLE(main ${SRCS})
+TARGET_LINK_LIBRARIES(main ${GMSH_LIBRARIES})

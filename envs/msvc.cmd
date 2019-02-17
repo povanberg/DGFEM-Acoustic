@@ -1,29 +1,19 @@
 @echo off
 
-:: This file opens a terminal which allows you to compile the code with a 64-bit mingw compiler
-::
-::     https://mingw-w64.org/
-::     https://www.msys2.org/
+:: This file opens a terminal which allows you to compile the code with Microsoft Visual Studio 2015 (x64) on Windows
 ::
 :: HOW TO USE THIS FILE ?
 ::
-::   [check the PATHs below]
 ::   [run this file]
 ::   mkdir build
 ::   cd build
-::   cmake -G "MinGW Makefiles" ..
-::   mingw32-make
-::   ctest
-::
-:: How to clean the "build" folder using cmd line ?
-::
-::   cd build
-::   rd /q /s .
-
-echo setting MinGW64 environment...
+::   cmake -A x64 ..
+::   cmake --build . --config Release
+::   [executables are built in the bin/Release folder]
+::   ctest -C Release
 
 :: set the location of gmsh SDK ( **MODIFY THIS LINE FOR YOUR SYSTEM** )
-set GMSHSDK=C:\local\gmsh-4.1.4-Windows64-sdk
+set GMSHSDK=F:\local\gmsh-sdk
 
 :: where is gmsh.exe and gmsh-**.dll ? (HINT: copy gmsh-**.dll to the bin folder)
 set PATH=%GMSHSDK%\bin;%PATH%
@@ -37,10 +27,7 @@ set LIB=%GMSHSDK%\lib;%LIB%
 :: where is gmsh.py ? (required only if you want to use the python API)
 set PYTHONPATH=%GMSHSDK%\lib;%PYTHONPATH%
 
-::set PATH=C:\mingw-w64\mingw64\bin;%PATH%
-set PATH=C:\mingw-w64\mingw64\bin;%PATH%
-
-:: open terminal
+:: set the environment of the msvc compiler
 CD /d "%~dp0"
 CD ..
-%comspec% /K
+%comspec% /K ""C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" %processor_architecture%"

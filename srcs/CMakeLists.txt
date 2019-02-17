@@ -1,0 +1,8 @@
+# programs
+SET(SRCS explore.cpp)
+ADD_EXECUTABLE(explore ${SRCS})
+TARGET_LINK_LIBRARIES(explore ${GMSH_LIBRARIES})
+
+SET(SRCS edges.cpp)
+ADD_EXECUTABLE(edges ${SRCS})
+TARGET_LINK_LIBRARIES(edges ${GMSH_LIBRARIES})

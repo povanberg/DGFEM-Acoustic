@@ -2,10 +2,12 @@
 #include <iostream>
 #include <algorithm>
 #include <gmsh.h>
+#include "element.h"
 
 int main(int argc, char **argv){
 
     if(argc < 2){
+
         std::cout << "Usage: " << argv[0] << " file.msh [options]" << std::endl;
         return 0;
     }
@@ -13,6 +15,9 @@ int main(int argc, char **argv){
     gmsh::initialize(argc, argv);
     gmsh::option::setNumber("General.Terminal", 1);
     gmsh::open(argv[1]);
+
+    // declares the element objects list
+    std::vector<element> elementList;
 
     // explore the mesh: what type of 2D elements do we have?
     std::vector<int> eleTypes;
@@ -47,21 +52,21 @@ int main(int argc, char **argv){
         std::vector<int> nodes;
         gmsh::model::mesh::getElementEdgeNodes(eleType2D, nodes, s, true);
 
-        // sorts the edges and makes them uniques
+        // makes the edges uniques
         int n = nodes.size();
-        int j = 0, k= 2;
+        int k = 0, l= 2;
 
-        while(j < n){
-            while(k < n){
-                if((nodes[j]==nodes[k] && nodes[j+1]==nodes[k+1]) || (nodes[j]==nodes[k+1] && nodes[j+1]==nodes[k])){
-                    nodes.erase(nodes.begin()+k);
-                    nodes.erase(nodes.begin()+k);
+        while(k < n){
+            while(l < n){
+                if((nodes[k]==nodes[l] && nodes[k+1]==nodes[l+1]) || (nodes[k]==nodes[l+1] && nodes[k+1]==nodes[l])){
+                    nodes.erase(nodes.begin()+l);
+                    nodes.erase(nodes.begin()+l);
                     n -= 2;
                 }
-                k += 2;
+                l += 2;
             }
-            j += 2;
-            k = j+2;
+            k += 2;
+            l = k+2;
         }
 
         // create a new discrete entity of dimension 1
@@ -71,13 +76,21 @@ int main(int argc, char **argv){
         int eleType1D = gmsh::model::mesh::getElementType("line", order);
         gmsh::model::mesh::setElementsByType(1, c, eleType1D, {}, nodes);
 
-        // this could be enriched with additional info: each topological edge could
-        // be associated with the tag of its parent element; in the sorting process
-        // eliminating duplicates a second tag can be associated for internal edges,
-        // allowing to keep track of neighbors
-    }
+        // Creates a list of objects elements
+        std::vector<int> tempNodes;
 
-    //gmsh::write("edges.msh");
+        for(std::size_t i=0; i<elementTags.size(); i++){
+            for(std::size_t j=0; j<numNodes; j++){
+
+                tempNodes.push_back(nodeTags[j+i*numNodes]);
+            }
+        
+            element newElement(elementTags[i], numNodes, tempNodes);
+            elementList.push_back(newElement);
+            newElement.~element();
+            tempNodes.clear();
+        }
+    }
 
     // iterate over all 1D elements and get integration information
     gmsh::model::mesh::getElementTypes(eleTypes, 1);
@@ -97,7 +110,13 @@ int main(int argc, char **argv){
         gmsh::model::mesh::getJacobians(eleType1D, "Gauss3", jac, det, pts, c);
     }
 
-    //gmsh::fltk::run();
+    for(std::size_t i=0; i<elementList.size(); i++){
+        std::cout << "elementList[" << i << "].m_Tag = " << elementList[i].m_Tag << std::endl;
+
+        for(std::size_t j=0; j<elementList[i].m_numberNodes; j++){
+            std::cout << "  elementList[" << i << "].m_nodes[" << j << "] = " << elementList[i].m_nodes[j] << std::endl;
+        }
+    }
 
     gmsh::finalize();
     return 0;

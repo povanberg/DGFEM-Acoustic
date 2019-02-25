@@ -2,7 +2,7 @@
 
 w = 5;        // Width of the plate
 h = 5;        // Height of the playe
-lc = 5;       // Catacteristic lenght
+lc = 0.5;       // Catacteristic lenght
 n = 0;        // Number of holes
 r = 0.5;      // Radius of the holes
 

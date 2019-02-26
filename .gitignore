@@ -1,5 +1,0 @@
-build/*
-.vscode/*
-edges.py
-view.py
-compile.py

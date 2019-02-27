@@ -29,11 +29,11 @@ Config parseConfig(std::string name){
         }
 
         config.dim = std::stoi(configMap["dim"]);
-        log("%s successfully loaded.", name.c_str());
+        Log("%s successfully loaded.", name.c_str());
     }
     else {
-        error("Couldn't open config file for reading.");
-        log("Default values will be used.");
+        Error("Couldn't open config file for reading.");
+        Log("Default values will be used.");
     }
 
     return config;

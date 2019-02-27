@@ -5,7 +5,7 @@
 #include <iostream>
 #include <vector>
 #include "utils.h"
-
+/*
 namespace lapack {
 
     extern "C" {
@@ -48,3 +48,4 @@ namespace linealg {
         std::cout << std::endl;
     }
 }
+*/

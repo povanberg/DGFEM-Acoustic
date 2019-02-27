@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include "Face.h"
+#include "Eigen/Dense"
 
 class Element {
     private:
@@ -28,10 +29,10 @@ class Element {
 
         int numIntPoints;
         int numBasisFcts;
-        std::vector<double> jacobian;
+        std::vector<Eigen::Matrix3d> jacobian;
         std::vector<double> detJacobian;
-        std::vector<double> xPoints;    // x = physical coordinates
-        std::vector<double> uPoints;    // u = parametric coordinates
+        std::vector<Eigen::Vector3d> xPoints;    // x = physical coordinates
+        std::vector<Eigen::Vector3d> uPoints;    // u = parametric coordinates
         std::vector<double> xbasisFct;
         std::vector<double> xgradBasisFct;  // see addBasis()
         std::vector<double> weights;

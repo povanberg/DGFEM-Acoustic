@@ -8,6 +8,7 @@
 #include "Element.h"
 #include <algorithm>
 #include <utils.h>
+#include "Eigen/Dense"
 
 Element::Element(int dim, int tag, std::vector<int> nodeTags) {
 
@@ -43,9 +44,24 @@ Element &Element::setJacobian(std::vector<double> &jacobian,
                               std::vector<double> &detJacobian,
                               std::vector<double> &xPoints,
                               int numIntPoints){
-    this->jacobian = jacobian;
+
+    for(int i=0; i<jacobian.size()/9; ++i){
+    Eigen::Matrix3d temp;
+        for(int j=0; j<3; ++j){
+            for(int k=0; k<3; ++k){
+            temp(j,k) = jacobian[j*3+k];
+            }
+        }
+        this->jacobian.push_back(temp);
+    }
+    for(int i=0; i<xPoints.size()/3; ++i){
+    Eigen::Vector3d temp;
+        for(int j=0; j<3; ++j){
+            temp(j) = xPoints[i*3+j];
+        }
+        this->xPoints.push_back(temp);
+    }
     this->detJacobian = detJacobian;
-    this->xPoints = xPoints;
     this->numIntPoints = numIntPoints;
     this->numBasisFcts = this->numIntPoints;
     return *this;
@@ -60,27 +76,31 @@ Element &Element::addBasis(std::vector<double> &ubasisFct,
     for(int it = 0; it < uPoints.size(); it += 4)
         this->weights.push_back(uPoints[it+3]);
     // Remove weights from points
-    for(int it = 0; it < uPoints.size(); ++it)
-        if(it%4 != 0)
-            this->uPoints.push_back(uPoints[it]);
+    for(int i=0; i<uPoints.size()/4; ++i){
+    Eigen::Vector3d temp;
+        for(int j=0; j<3; ++j){
+            temp(j) = uPoints[i*4+j];
+        }
+        this->uPoints.push_back(temp);
+    }
 
     // We have, df/du and want df/dx
     // solution: df/dx = df/du * du/dx
     // But jacobian is dx/du so inverse.
     int n = 3; // Can be optimized using the dimension, but as gmsh give 3D values...
-    double invJacobian[n*n];
     double dfdu, dfdx, dudx;
     for(int i=0; i<this->numIntPoints; ++i){
+        
         // Assign jacobian to invJacobian
-        std::copy(this->jacobian.begin()+i*(n*n), this->jacobian.begin()+(i+1)*(n*n), invJacobian);
+        Eigen::Matrix3d invJacobian = this->jacobian[i].inverse();
+
         // Inverse and store invJacobian (=du/dx)
-        lapack::inverse(invJacobian, n);
         for(int j=0; j<this->numBasisFcts; ++j){
             for(int x=0; x<n; ++x) {
                 dfdx = 0.;
                 for(int u=0; u<n; ++u) {
                     dfdu = ugradBasisFct[i*n*numBasisFcts+j*numBasisFcts+u];
-                    dudx = invJacobian[u*n+x];
+                    dudx = invJacobian(u,x);
                     dfdx += dfdu*dudx;
                 }
                 this->xgradBasisFct.push_back(dfdx);

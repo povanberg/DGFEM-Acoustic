@@ -15,7 +15,7 @@ int main(int argc, char **argv)
     // e.g. ./dgarlerkin mymesh.msh myconfig.conf
     if(argc!=3)
     {
-        error("Argument list too long.");
+        Error("Argument list too long.");
         return E2BIG;
     }
 
@@ -23,7 +23,7 @@ int main(int argc, char **argv)
     std::string config_name = argv[2];
 
     // Load simulation parameters
-    Config config = parseConfig(config_name);
+    /*Config config = parseConfig(config_name);*/
 
     // Load Mesh
     gmsh::initialize();
@@ -42,9 +42,7 @@ int main(int argc, char **argv)
     Mesh mesh(msh_name);
 
     // Simulation
-    solver::solveForwardEuler(mesh, config);
-
-
+    /*solver::solveForwardEuler(mesh, config);*/
 
     //gmsh::fltk::run();
     gmsh::finalize();

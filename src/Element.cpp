@@ -51,7 +51,7 @@ Element &Element::setJacobian(std::vector<double> &jacobian,
         for(int j=0; j<3; ++j){
             tempxPoints(j) = xPoints[i*3+j];
             for(int k=0; k<3; ++k){
-                tempJacobian(j,k) = jacobian[j*3+k];
+                tempJacobian(j,k) = jacobian[i*9+j*3+k];
             }
         }
         this->xPoints.push_back(tempxPoints);

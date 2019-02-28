@@ -71,8 +71,8 @@ Mesh::Mesh(std::string name) :  name(name){
             firstD = determinants.begin() + i*numGauss;
             lastD = determinants.begin() + (i+1)*numGauss;
             std::vector<double> elementDet(firstD, lastD);
-            firstD = points.begin() + i*numGauss;
-            lastD = points.begin() + (i+1)*numGauss;
+            firstD = points.begin() + i*(3*numGauss);
+            lastD = points.begin() + (i+1)*(3*numGauss);
             std::vector<double> elementPoints(firstD, lastD);
             this->elements[i].setJacobian(elementJacobian, elementDet, elementPoints, numGauss);
         }

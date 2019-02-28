@@ -46,20 +46,16 @@ Element &Element::setJacobian(std::vector<double> &jacobian,
                               int numIntPoints){
 
     for(int i=0; i<jacobian.size()/9; ++i){
-    Eigen::Matrix3d temp;
+        Eigen::Vector3d tempxPoints;
+        Eigen::Matrix3d tempJacobian;
         for(int j=0; j<3; ++j){
+            tempxPoints(j) = xPoints[i*3+j];
             for(int k=0; k<3; ++k){
-            temp(j,k) = jacobian[j*3+k];
+                tempJacobian(j,k) = jacobian[j*3+k];
             }
         }
-        this->jacobian.push_back(temp);
-    }
-    for(int i=0; i<xPoints.size()/3; ++i){
-    Eigen::Vector3d temp;
-        for(int j=0; j<3; ++j){
-            temp(j) = xPoints[i*3+j];
-        }
-        this->xPoints.push_back(temp);
+        this->xPoints.push_back(tempxPoints);
+        this->jacobian.push_back(tempJacobian);
     }
     this->detJacobian = detJacobian;
     this->numIntPoints = numIntPoints;

@@ -6,6 +6,7 @@
 #ifndef DGALERKIN_ELEMENT_H
 #define DGALERKIN_ELEMENT_H
 
+
 class Element {
     private:
         //----------------------------------------------------------------------------------------------------------
@@ -52,7 +53,7 @@ public:
         // with corresponding tag
         bool hasNode(const int tag);
 
-        // Add face to the element
+        // Add face to element
         Element &addFace(Face face);
 
         // Set jacobian for the element

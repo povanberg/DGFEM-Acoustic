@@ -44,8 +44,11 @@ int main(int argc, char **argv)
     // Simulation
     solver::solveForwardEuler(mesh, config);
 
+
     //gmsh::fltk::run();
     gmsh::finalize();
+
+    std::cout << "SUCCESS" << std::endl;
 
     return EXIT_SUCCESS;
 }

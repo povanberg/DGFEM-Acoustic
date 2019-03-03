@@ -48,6 +48,7 @@ public:
         const Eigen::VectorXd &getBasisFcts(const int f);
         const Eigen::MatrixXd &getGradBasisFcts(const int f);
         void getMassMatrix(Eigen::MatrixXd &massMAtrix);
+        void getStiffMatrix(Eigen::MatrixXd &stiffMatrix, const Eigen::Vector3d a);
         //----------------------------------------------------------------------------------------------------------
         // Check if element contains the face
         // with corresponding tag
@@ -66,8 +67,6 @@ public:
         Element &setBasis(std::vector<double> &ubasisFct,
                           std::vector<double> &ugradBasisFct,
                           std::vector<double> &uPoints);
-        //----------------------------------------------------------------------------------------------------------
-
 };
 
 

@@ -34,9 +34,9 @@ Element &Element::setJacobian(std::vector<double> &jacobian,
                               int numIntPoints){
 
     this->numIntPoints = numIntPoints;
-    this->numBasisFcts = this->numIntPoints;
+    this->numBasisFcts = this->numNodes;
     std::vector<double>::const_iterator gIt = jacobian.begin();
-    for(unsigned int g=0; g<numIntPoints; ++g, gIt+=9){
+    for(unsigned int g=0; g<this->numIntPoints; ++g, gIt+=9){
         std::vector<double> gJacobian(gIt, gIt + 9);
         this->jacobian.push_back(Eigen::Map<Eigen::Matrix3d>(gJacobian.data()).transpose());
         this->invJacobian.push_back(this->jacobian[g].inverse());
@@ -64,15 +64,19 @@ Element &Element::setBasis(std::vector<double> &ubasisFct,
     Eigen::VectorXd ubasisFctEigen;
     Eigen::MatrixXd ugradBasisFctEigen;
     Eigen::MatrixXd xgradBasisFctEigen;
-    std::vector<double>::const_iterator bIt = ubasisFct.begin();
-    std::vector<double>::const_iterator gIt = ugradBasisFct.begin();
-    for(int f = 0; f < this->numBasisFcts; ++f, bIt+=this->numIntPoints, gIt+=3*this->numIntPoints) {
+    for(int f = 0; f < this->numBasisFcts; ++f) {
         // Extract
-        std::vector<double> ubasisFct(bIt, bIt + this->numIntPoints);
-        std::vector<double> ugradBasisFct(gIt, gIt + 3*this->numIntPoints);
+        std::vector<double> ubFct(this->numIntPoints);
+        std::vector<double> ubgradFct(this->numIntPoints*3);
+        for(int g = 0; g < this->numIntPoints; ++g){
+            ubFct[g] = ubasisFct[g*this->numBasisFcts+f];
+            ubgradFct[g*3+0] = ugradBasisFct[g*this->numBasisFcts*3+f*3+0];
+            ubgradFct[g*3+1] = ugradBasisFct[g*this->numBasisFcts*3+f*3+1];
+            ubgradFct[g*3+2] = ugradBasisFct[g*this->numBasisFcts*3+f*3+2];
+        }
         // To Eigen
-        ubasisFctEigen = Eigen::Map<Eigen::VectorXd>(ubasisFct.data(), this->numIntPoints);
-        ugradBasisFctEigen = Eigen::Map<Eigen::MatrixXd>(ugradBasisFct.data(), 3, this->numIntPoints).transpose();
+        ubasisFctEigen = Eigen::Map<Eigen::VectorXd>(ubFct.data(), this->numIntPoints);
+        ugradBasisFctEigen = Eigen::Map<Eigen::MatrixXd>(ubgradFct.data(), 3, this->numIntPoints).transpose();
         xgradBasisFctEigen = Eigen::MatrixXd(this->numIntPoints, 3);
         // df/du -> df/dx
         for(int g=0; g < this->numIntPoints; g++){
@@ -82,7 +86,6 @@ Element &Element::setBasis(std::vector<double> &ubasisFct,
         this->basisFcts.push_back(ubasisFctEigen);
         this->gradBasisFcts.push_back(xgradBasisFctEigen);
     }
-
     return *this;
 }
 
@@ -166,7 +169,21 @@ void Element::getMassMatrix(Eigen::MatrixXd &massMatrix){
     massMatrix.resize(this->numBasisFcts, this->numBasisFcts);
     for(unsigned int i=0; i<this->numBasisFcts; ++i){
         for(unsigned int j=0; j<this->numBasisFcts; ++j){
-            massMatrix(i,j) = weights.cwiseProduct(basisFcts[i]).cwiseProduct(basisFcts[j]).dot(detJacobian);
+            massMatrix(i,j) = weights.cwiseProduct(basisFcts[i])
+                                     .cwiseProduct(basisFcts[j])
+                                     .dot(detJacobian);
+        }
+    }
+}
+
+// Get element mass matrix
+void Element::getStiffMatrix(Eigen::MatrixXd &stiffMatrix, const Eigen::Vector3d a){
+    stiffMatrix.resize(this->numBasisFcts, this->numBasisFcts);
+    for(unsigned int i=0; i<this->numBasisFcts; ++i){
+        for(unsigned int j=0; j<this->numBasisFcts; ++j){
+            stiffMatrix(i,j) = weights.cwiseProduct(gradBasisFcts[i]*a)
+                                      .cwiseProduct(basisFcts[j])
+                                      .dot(detJacobian);
         }
     }
 }

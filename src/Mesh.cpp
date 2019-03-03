@@ -61,8 +61,8 @@ Mesh::Mesh(std::string name) :  name(name){
         std::vector<double> jacobians;
         std::vector<double> determinants;
         std::vector<double> points;
-        int numGauss = 3; // hard coded for now, see gauss3
-        gmsh::model::mesh::getJacobians(this->elements[0].getType(), "Gauss2",
+        int numGauss = 4; // hard coded for now, see gauss3
+        gmsh::model::mesh::getJacobians(this->elements[0].getType(), "Gauss3",
                                         jacobians, determinants, points, entityTag);
         // Object assignment
         std::vector<double>::const_iterator jIt = jacobians.begin();
@@ -84,9 +84,9 @@ Mesh::Mesh(std::string name) :  name(name){
         std::vector<double> basisFunctions;
         std::vector<double> gradBasisFunctions;
         std::vector<double> integrationPoints;
-        gmsh::model::mesh::getBasisFunctions(this->elements[0].getType(), "Gauss2", "Lagrange",
+        gmsh::model::mesh::getBasisFunctions(this->elements[0].getType(), "Gauss3", "Lagrange",
                                              integrationPoints, numComp, basisFunctions);
-        gmsh::model::mesh::getBasisFunctions(this->elements[0].getType(), "Gauss2", "GradLagrange",
+        gmsh::model::mesh::getBasisFunctions(this->elements[0].getType(), "Gauss3", "GradLagrange",
                                              integrationPoints, numComp, gradBasisFunctions);
         // Object assignment
         for(int i=0; i<elementTags.size(); ++i)
@@ -160,4 +160,27 @@ void Mesh::getMassMatrix(Eigen::SparseMatrix<double> M){
     }
     // Triplets -> Sparse
     M.setFromTriplets(tripletList.begin(), tripletList.end());
+}
+
+
+void Mesh::getStiffMatrix(Eigen::SparseMatrix<double> K, const Eigen::Vector3d a) {
+    int offset = 0;
+    int KSize = this->elements.size()*this->elements[0].getNumNodes();
+    std::vector<T> tripletList;
+    Eigen::MatrixXd elStiffMatrix;
+    // Memory approximation reserve
+    tripletList.reserve(KSize*KSize);
+    // Filling
+    K.resize(KSize, KSize);
+    for(Element& el : this->elements){
+        el.getStiffMatrix(elStiffMatrix, a);
+        for(int i=0; i<elStiffMatrix.rows(); ++i){
+            for(int j=0; j<elStiffMatrix.cols(); ++j){
+                tripletList.push_back(T(offset+i,offset+j, elStiffMatrix(i,j)));
+            }
+        }
+        offset += el.getNumNodes();
+    }
+    // Triplets -> Sparse
+    K.setFromTriplets(tripletList.begin(), tripletList.end());
 }

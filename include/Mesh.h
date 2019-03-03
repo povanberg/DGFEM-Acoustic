@@ -17,12 +17,13 @@ class Mesh {
         std::vector<int> diricheletEntityTags;                      // List of all geometrical entities in dirichelet
         //----------------------------------------------------------------------------------------------------------
     public:
-        //----------------------------------------------------------------------------------------------------------
+
         Mesh(std:: string name);
 
         std::vector<Element> elements;                              // List of elements in Mesh
 
         void getMassMatrix(Eigen::SparseMatrix<double> M);
+        void getStiffMatrix(Eigen::SparseMatrix<double> K, const Eigen::Vector3d a);
 };
 
 

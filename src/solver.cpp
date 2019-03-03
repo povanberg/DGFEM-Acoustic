@@ -20,8 +20,15 @@ namespace solver {
         // 1: Next iteration solution
         std::vector<std::vector<double>> solution;
 
+        // Compute mass matrix
         Eigen::SparseMatrix<double> M;
         mesh.getMassMatrix(M);
+
+        // Compute stiffness (or convection) matrix
+        Eigen::Vector3d a = {1, 1, 0}; // advection coefficient
+        Eigen::SparseMatrix<double> K;
+        mesh.getStiffMatrix(K, a);
+
 
         // Save results example
         /*int viewTag = gmsh::view::add("nameConfig");

@@ -1,2 +1,0 @@
-DIM=2
-FLUX=average

@@ -56,28 +56,31 @@ Element &Element::setJacobian(std::vector<double> &jacobian,
         }
         this->xPoints.push_back(tempxPoints);
         this->jacobian.push_back(tempJacobian);
+        this->invJacobian.push_back(tempJacobian.inverse());
     }
     this->detJacobian = detJacobian;
     this->numIntPoints = numIntPoints;
-    this->numBasisFcts = this->numIntPoints;
+    this->numBasisFcts = numIntPoints;
     return *this;
 }
 
 Element &Element::addBasis(std::vector<double> &ubasisFct,
                            std::vector<double> &ugradBasisFct,
                            std::vector<double> &uPoints) {
-    this->xbasisFct = ubasisFct;
 
     // Extract weigths
     for(int it = 0; it < uPoints.size(); it += 4)
         this->weights.push_back(uPoints[it+3]);
     // Remove weights from points
     for(int i=0; i<uPoints.size()/4; ++i){
-    Eigen::Vector3d temp;
+        Eigen::Vector3d tempuPoints;
+        Eigen::Vector3d tempFct;
         for(int j=0; j<3; ++j){
-            temp(j) = uPoints[i*4+j];
+            tempuPoints(j) = uPoints[i*4+j];
+            tempFct(j) = uPoints[i*3+j];
         }
-        this->uPoints.push_back(temp);
+        this->uPoints.push_back(tempuPoints);
+        this->xbasisFct.push_back(tempFct);
     }
 
     // We have, df/du and want df/dx
@@ -86,9 +89,6 @@ Element &Element::addBasis(std::vector<double> &ubasisFct,
     int n = 3; // Can be optimized using the dimension, but as gmsh give 3D values...
     double dfdu, dfdx, dudx;
     for(int i=0; i<this->numIntPoints; ++i){
-        
-        // Assign jacobian to invJacobian
-        Eigen::Matrix3d invJacobian = this->jacobian[i].inverse();
 
         // Inverse and store invJacobian (=du/dx)
         for(int j=0; j<this->numBasisFcts; ++j){
@@ -96,12 +96,13 @@ Element &Element::addBasis(std::vector<double> &ubasisFct,
                 dfdx = 0.;
                 for(int u=0; u<n; ++u) {
                     dfdu = ugradBasisFct[i*n*numBasisFcts+j*numBasisFcts+u];
-                    dudx = invJacobian(u,x);
+                    dudx = this->invJacobian[i](u,x);
                     dfdx += dfdu*dudx;
                 }
                 this->xgradBasisFct.push_back(dfdx);
             }
         }
     }
+
     return *this;
 }

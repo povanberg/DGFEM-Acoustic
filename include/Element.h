@@ -30,12 +30,15 @@ class Element {
         int numIntPoints;
         int numBasisFcts;
         std::vector<Eigen::Matrix3d> jacobian;
+        std::vector<Eigen::Matrix3d> invJacobian;
         std::vector<double> detJacobian;
         std::vector<Eigen::Vector3d> xPoints;    // x = physical coordinates
         std::vector<Eigen::Vector3d> uPoints;    // u = parametric coordinates
-        std::vector<double> xbasisFct;
+        std::vector<Eigen::Vector3d> xbasisFct;
         std::vector<double> xgradBasisFct;  // see addBasis()
         std::vector<double> weights;
+
+        Eigen::MatrixXd M;
 
         bool hasNode(int tag);
         Element &addFace(Face face);

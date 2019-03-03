@@ -6,6 +6,7 @@
 #include "logger.h"
 #include "Mesh.h"
 #include "solver.h"
+#include "mass.h"
 
 int main(int argc, char **argv)
 {
@@ -44,8 +45,13 @@ int main(int argc, char **argv)
     // Simulation
     /*solver::solveForwardEuler(mesh, config);*/
 
+    // Creates the Mass matrix for each elements in the mesh
+    mass::createM(mesh);
+
     //gmsh::fltk::run();
     gmsh::finalize();
+
+    std::cout << "SUCCESS" << std::endl;
 
     return EXIT_SUCCESS;
 }

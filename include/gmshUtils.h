@@ -1,7 +1,7 @@
+#include <gmsh.h>
+
 #ifndef DGALERKIN_GMSHUTILS_H
 #define DGALERKIN_GMSHUTILS_H
-
-#include <gmsh.h>
 
 namespace gmshUtils {
 
@@ -15,4 +15,4 @@ namespace gmshUtils {
 
 }
 
-#endif //DGALERKIN_GMSHUTILS_H
+#endif

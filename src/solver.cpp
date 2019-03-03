@@ -2,14 +2,10 @@
 #include <configParser.h>
 #include <vector>
 #include <Mesh.h>
-#import "logger.h"
-
-void zeroInitializer(std::vector<std::vector<double>> &solution, const Mesh &mesh) {
-    for (unsigned int i=0; i<mesh.faceNodeTags.size(); ++i) {
-        std::vector<double> initValue(1,0);
-        solution.push_back(initValue);
-    }
-}
+#include "logger.h"
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
+#include <iostream>
 
 double integrateGauss(){
     return 0.;
@@ -17,46 +13,15 @@ double integrateGauss(){
 
 namespace solver {
 
+
     void solveForwardEuler(Mesh &mesh, const Config config) {
 
         // 0: Current solution
         // 1: Next iteration solution
         std::vector<std::vector<double>> solution;
 
-        // 1: Set Initial conditions
-        zeroInitializer(solution, mesh);
-
-        // 2: Precompute
-        //auto elementTag = mesh.elementTags[0];
-        //error("element: %i", elementTag);
-
-        // 2.a: Mass matrix: [(row * columns) + column]
-        //std::vector<double> massMatrix(mesh.elementNumNodes*mesh.elementNumNodes);
-
-        /*std::vector<double> integrationPoints;
-        std::vector<double> basisFunctions;
-        int numComponents;
-        gmsh::model::mesh::getBasisFunctions(
-                mesh.elementType,
-                "Gauss3",
-                "Lagrange",
-                integrationPoints,
-                numComponents,
-                basisFunctions);
-
-        int numIntPoints = (int) integrationPoints.size() / 4;
-        // For each basis function combination
-        for(unsigned int i=0; i<mesh.elementNumNodes; ++i) {
-            for (unsigned int j = 0; j < mesh.elementNumNodes; ++j) {
-
-            }
-        }*/
-
-
-
-
-
-
+        Eigen::SparseMatrix<double> M;
+        mesh.getMassMatrix(M);
 
         // Save results example
         /*int viewTag = gmsh::view::add("nameConfig");

@@ -61,9 +61,9 @@ Mesh::Mesh(std::string name) :  name(name){
         std::vector<double> jacobians;
         std::vector<double> determinants;
         std::vector<double> points;
-        int numGauss = 4; // hard coded for now, see gauss3
         gmsh::model::mesh::getJacobians(this->elements[0].getType(), "Gauss3",
                                         jacobians, determinants, points, entityTag);
+        int numGauss = (int) determinants.size() / elementTags.size();
         // Object assignment
         std::vector<double>::const_iterator jIt = jacobians.begin();
         std::vector<double>::const_iterator detIt = determinants.begin();
@@ -107,25 +107,47 @@ Mesh::Mesh(std::string name) :  name(name){
         gmsh::model::mesh::getElementEdgeNodes(elements[0].getType(), faceNodeTags, -1);
     else
         gmsh::model::mesh::getElementFaceNodes(elements[0].getType(), 3, faceNodeTags, -1); // Todo: 3 for trigs, 4 for quads.
+
+    // Sort and exclude duplicates
     gmshUtils::makeUniqueInterfaces(faceNodeTags, faceNumNodes);
+
+    // Add entity and auto generate tags for the faces
     int facesTag = gmsh::model::addDiscreteEntity(this->dim-1);
     gmsh::model::mesh::setElementsByType(this->dim-1, facesTag, faceType, {}, faceNodeTags);
     faceNodeTags.clear();
     gmsh::model::mesh::getElementsByType(faceType, faceTags, faceNodeTags, facesTag);
+
+    // Get Jacobian for each faces
+    std::vector<double> jacobians;
+    std::vector<double> determinants;
+    std::vector<double> points;
+    gmsh::model::mesh::getJacobians(faceType, "Gauss3", jacobians, determinants, points, facesTag);
+    int numGauss = (int) determinants.size() / faceTags.size();
+    std::vector<double>::const_iterator jIt = jacobians.begin();
+    std::vector<double>::const_iterator detIt = determinants.begin();
+    std::vector<double>::const_iterator pIt = points.begin();
+
     // Object Assignement
     std::vector<int>::const_iterator fIt = faceNodeTags.begin();
-    for(unsigned int i=0; i<faceTags.size(); ++i, fIt+=faceNumNodes) {
+    for(unsigned int i=0; i<faceTags.size(); ++i, fIt+=faceNumNodes, jIt+=9*numGauss, detIt+=numGauss, pIt+=3*numGauss) {
+
         std::vector<int> faceNodeTagsCurrent(fIt, fIt+faceNumNodes);
+        std::vector<double> elementJacobian(jIt, jIt + 9*numGauss);
+        std::vector<double> elementDet(detIt, detIt + numGauss);
+        std::vector<double> elementPoints(pIt, pIt + 3*numGauss);
+
         Face face(faceTags[i], faceName, this->dim-1, faceNumNodes, faceType, faceNodeTagsCurrent);
+        face.setJacobian(elementJacobian, elementDet, elementPoints);
+
         for(auto element = std::begin(this->elements); element!=std::end(this->elements); ++element) {
             bool hasFace = true;
-            for (auto node : face.getNodeTags()) {
+            for (auto &node : face.getNodeTags()) {
                 if(!element->hasNode(node))
                     hasFace = false;
             }
             if(hasFace) {
-                element->addFace(face);
                 face.addElement(element->getTag());
+                element->addFace(face);
             }
         }
     }
@@ -140,7 +162,7 @@ Mesh::Mesh(std::string name) :  name(name){
 // Assemble Mesh mass matrix from element mass matrix
 // For efficiency the mass matrix is sparse (block diagonal)
 typedef Eigen::Triplet<double> T;
-void Mesh::getMassMatrix(Eigen::SparseMatrix<double> M){
+void Mesh::getMassMatrix(Eigen::SparseMatrix<double> &M){
     int offset = 0;
     int MSize = this->elements.size()*this->elements[0].getNumNodes();
     std::vector<T> tripletList;
@@ -163,7 +185,7 @@ void Mesh::getMassMatrix(Eigen::SparseMatrix<double> M){
 }
 
 
-void Mesh::getStiffMatrix(Eigen::SparseMatrix<double> K, const Eigen::Vector3d a) {
+void Mesh::getStiffMatrix(Eigen::SparseMatrix<double> &K, const Eigen::Vector3d &a) {
     int offset = 0;
     int KSize = this->elements.size()*this->elements[0].getNumNodes();
     std::vector<T> tripletList;
@@ -183,4 +205,86 @@ void Mesh::getStiffMatrix(Eigen::SparseMatrix<double> K, const Eigen::Vector3d a
     }
     // Triplets -> Sparse
     K.setFromTriplets(tripletList.begin(), tripletList.end());
+}
+
+void Mesh::getFlux(Eigen::VectorXd &F, const Eigen::Vector3d &a) {
+    int offset = 0;
+    F.resize(this->elements.size()*this->elements[0].getNumNodes());
+    // Loop over elements
+    for(Element& el : this->elements) {
+
+        Eigen::Vector3d numFlux;
+        Eigen::MatrixXd elF;
+        el.getFlux(elF, a);
+
+        // Depends on numerical flux : (In+Out)/2
+        Eigen::VectorXd numDataIn;
+        Eigen::VectorXd numDataOut;
+        for(int i=0; i<el.getNumNodes(); ++i){
+            for(Face &face: el.faces) {
+                if(face.boundary){
+                    numFlux(i) = 0.0;
+                }
+                else {
+                    int elOutTag = face.getSecondElement(el.getTag());
+                    Element elOut = getElement(elOutTag);
+                    for(int j=0; j<elOut.getNumNodes(); ++j){
+                        if(el.getNodeTags()[i] == el.getNodeTags()[j]){
+                            el.getData(numDataIn);
+                            elOut.getData(numDataOut);
+                            numFlux(i) = (numDataIn(i)+numDataOut(j))/2;
+                        }
+                    }
+                }
+            }
+        }
+
+        Eigen::VectorXd FF = elF*numFlux;
+        F(offset+0)= FF(0);
+        F(offset+1)= FF(2);
+        F(offset+1)= FF(2);
+        F(offset+1)= FF(2);
+        offset += el.getNumNodes();
+    }
+}
+
+Element &Mesh::getElement(const int tag){
+    for(Element& el : this->elements){
+        if(el.getTag() == tag)
+            return el;
+    }
+}
+
+Element &Mesh::getDataElement(const int tag){
+    for(Element& el : this->elements){
+        if(el.getTag() == tag)
+            return el;
+    }
+}
+
+
+void Mesh::getNodeTags(std::vector<int> &nodeTags){
+    for(Element& el : this->elements){
+        for(int& tag : el.getNodeTags())
+            nodeTags.push_back(tag);
+    }
+}
+
+void Mesh::getData(Eigen::VectorXd &data){
+    Eigen::VectorXd elData;
+    for(Element& el : this->elements) {
+        el.getData(elData);
+        data << data, elData;
+    }
+}
+
+void Mesh::setData(Eigen::VectorXd &data){
+    int offset = 0;
+    int elNumNode;
+    for(Element& el : this->elements) {
+        elNumNode = el.getNumNodes();
+        Eigen::VectorXd elData = data.segment(offset, elNumNode);
+        el.setData(elData);
+        offset += elNumNode;
+    }
 }

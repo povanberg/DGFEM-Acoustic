@@ -30,6 +30,7 @@ class Element {
         std::vector<Eigen::VectorXd> basisFcts;                         // [f](g) : f= basis fct; g=int point
         std::vector<Eigen::MatrixXd> gradBasisFcts;                     // [f](g,i) : f= fct; g=int point; i=df/dx_i
         //----------------------------------------------------------------------------------------------------------
+        Eigen::VectorXd u;
 public:
         Element(int dim, int tag, std::vector<int> &nodeTags);
         std::vector<Face> faces;
@@ -38,6 +39,7 @@ public:
         const int &getType();
         const int &getOrder();
         const int &getNumNodes();
+        std::vector<int> &getNodeTags();
         const std::string &getName();
         const Eigen::Matrix3d &getJacobian(const int g);
         const Eigen::Matrix3d &getInvJacobian(const int g);
@@ -48,11 +50,14 @@ public:
         const Eigen::VectorXd &getBasisFcts(const int f);
         const Eigen::MatrixXd &getGradBasisFcts(const int f);
         void getMassMatrix(Eigen::MatrixXd &massMAtrix);
-        void getStiffMatrix(Eigen::MatrixXd &stiffMatrix, const Eigen::Vector3d a);
+        void getStiffMatrix(Eigen::MatrixXd &stiffMatrix, const Eigen::Vector3d &a);
+        void getData(Eigen::VectorXd &data);
+        void setData(Eigen::VectorXd &data);
         //----------------------------------------------------------------------------------------------------------
-        // Check if element contains the face
-        // with corresponding tag
+
         bool hasNode(const int tag);
+
+        void getFlux(Eigen::MatrixXd &Flux, const Eigen::Vector3d &a);
 
         // Add face to element
         Element &addFace(Face face);

@@ -19,6 +19,7 @@ Element::Element(int dim, int tag, std::vector<int> &nodeTags) {
             this->order,
             this->numNodes,
             this->paramCoord);
+    this->u.resize(this->numNodes);
 }
 
 // Add face to the element
@@ -119,6 +120,11 @@ const std::string &Element::getName(){
     return this->name;
 }
 
+// Get list of node tags
+std::vector<int> &Element::getNodeTags(){
+    return this->nodeTags;
+}
+
 // Get jacobian at gauss node g
 const Eigen::Matrix3d &Element::getJacobian(const int g){
     return this->jacobian[g];
@@ -177,7 +183,7 @@ void Element::getMassMatrix(Eigen::MatrixXd &massMatrix){
 }
 
 // Get element mass matrix
-void Element::getStiffMatrix(Eigen::MatrixXd &stiffMatrix, const Eigen::Vector3d a){
+void Element::getStiffMatrix(Eigen::MatrixXd &stiffMatrix, const Eigen::Vector3d &a){
     stiffMatrix.resize(this->numBasisFcts, this->numBasisFcts);
     for(unsigned int i=0; i<this->numBasisFcts; ++i){
         for(unsigned int j=0; j<this->numBasisFcts; ++j){
@@ -186,4 +192,29 @@ void Element::getStiffMatrix(Eigen::MatrixXd &stiffMatrix, const Eigen::Vector3d
                                       .dot(detJacobian);
         }
     }
+}
+
+void Element::getFlux(Eigen::MatrixXd &Flux, const Eigen::Vector3d &a){
+    // Independent of numerical flux
+    Flux = Eigen::MatrixXd::Zero(this->numBasisFcts, this->numBasisFcts);
+    for(unsigned int i=0; i<this->numBasisFcts; ++i) {
+        for (unsigned int j = 0; j < this->numBasisFcts; ++j) {
+            for(Face &face: this->faces){
+                if(face.hasNode(this->nodeTags[i]) && face.hasNode(this->nodeTags[j])){
+                    Flux(i, j) += face.getFluxInt(a);
+                }
+                else{
+                    Flux(i, j) += 0.0;
+                }
+            }
+        }
+    }
+}
+
+void Element::getData(Eigen::VectorXd &data){
+    data = this->u;
+}
+
+void Element::setData(Eigen::VectorXd &data){
+    this->u = data;
 }

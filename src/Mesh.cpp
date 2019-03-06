@@ -147,9 +147,19 @@ Mesh::Mesh(std::string name) :  name(name){
             }
             if(hasFace) {
                 face.addElement(element->getTag());
+            }
+        }
+        for(auto element = std::begin(this->elements); element!=std::end(this->elements); ++element) {
+            bool hasFace = true;
+            for (auto &node : face.getNodeTags()) {
+                if(!element->hasNode(node))
+                    hasFace = false;
+            }
+            if(hasFace) {
                 element->addFace(face);
             }
         }
+
     }
     Log("Faces loaded");
 
@@ -209,21 +219,21 @@ void Mesh::getStiffMatrix(Eigen::SparseMatrix<double> &K, const Eigen::Vector3d 
 
 void Mesh::getFlux(Eigen::VectorXd &F, const Eigen::Vector3d &a) {
     int offset = 0;
-    F.resize(this->elements.size()*this->elements[0].getNumNodes());
+    F.resize(this->elements.size() * this->elements[0].getNumNodes());
     // Loop over elements
-    for(Element& el : this->elements) {
+    for (Element &el : this->elements) {
 
-        Eigen::Vector3d numFlux;
-        Eigen::MatrixXd elF;
-        el.getFlux(elF, a);
+        Eigen::VectorXd numFlux;
+        el.getFlux(numFlux, a, this->elements);
+
 
         // Depends on numerical flux : (In+Out)/2
-        Eigen::VectorXd numDataIn;
+        /*Eigen::VectorXd numDataIn;
         Eigen::VectorXd numDataOut;
         for(int i=0; i<el.getNumNodes(); ++i){
             for(Face &face: el.faces) {
                 if(face.boundary){
-                    numFlux(i) = 0.0;
+                    numFlux(i) += 0.0;
                 }
                 else {
                     int elOutTag = face.getSecondElement(el.getTag());
@@ -232,20 +242,21 @@ void Mesh::getFlux(Eigen::VectorXd &F, const Eigen::Vector3d &a) {
                         if(el.getNodeTags()[i] == el.getNodeTags()[j]){
                             el.getData(numDataIn);
                             elOut.getData(numDataOut);
-                            numFlux(i) = (numDataIn(i)+numDataOut(j))/2;
+                            numFlux(i) = (numDataIn(i)+numDataOut(j))/2.;
                         }
                     }
                 }
             }
-        }
+        }*/
 
-        Eigen::VectorXd FF = elF*numFlux;
-        F(offset+0)= FF(0);
-        F(offset+1)= FF(2);
-        F(offset+1)= FF(2);
-        F(offset+1)= FF(2);
+        //Eigen::VectorXd FF = elF*numFlux;
+        F(offset + 0) = numFlux(0);
+        F(offset + 1) = numFlux(1);
+        F(offset + 2) = numFlux(2);
         offset += el.getNumNodes();
     }
+    Eigen::VectorXd data;
+    this->getData(data);
 }
 
 Element &Mesh::getElement(const int tag){
@@ -274,7 +285,14 @@ void Mesh::getData(Eigen::VectorXd &data){
     Eigen::VectorXd elData;
     for(Element& el : this->elements) {
         el.getData(elData);
-        data << data, elData;
+        if(data.size() == 0){
+            data = elData;
+        }
+        else{
+            Eigen::VectorXd temp(data.size()+elData.size());
+            temp << data, elData;
+            data = temp;
+        }
     }
 }
 

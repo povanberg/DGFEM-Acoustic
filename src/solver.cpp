@@ -53,7 +53,7 @@ namespace solver {
         Eigen::SparseMatrix<double> M_inv = solver.solve(I);
 
         // Compute stiffness (or convection) matrix
-        Eigen::Vector3d a = {1, 1, 0}; // advection coefficient
+        Eigen::Vector3d a = {1, 0, 0}; // advection coefficient
         Eigen::SparseMatrix<double> K;
         mesh.getStiffMatrix(K, a);
 
@@ -67,7 +67,7 @@ namespace solver {
         double t0 = 0;
         double tf = 1;
         int step = 0;
-        double dt = 0.1;
+        double dt = 0.01;
         for(double t=t0; t<tf; t+=dt, ++step) {
 
             // Savings

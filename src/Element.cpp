@@ -194,18 +194,46 @@ void Element::getStiffMatrix(Eigen::MatrixXd &stiffMatrix, const Eigen::Vector3d
     }
 }
 
-void Element::getFlux(Eigen::MatrixXd &Flux, const Eigen::Vector3d &a){
+void Element::getFlux(Eigen::VectorXd &Flux, const Eigen::Vector3d &a, std::vector<Element> &elements){
     // Independent of numerical flux
-    Flux = Eigen::MatrixXd::Zero(this->numBasisFcts, this->numBasisFcts);
+    Eigen::VectorXd numDataIn;
+    Eigen::VectorXd numDataOut;
+    Flux = Eigen::VectorXd::Zero(this->numBasisFcts);
     for(unsigned int i=0; i<this->numBasisFcts; ++i) {
         for (unsigned int j = 0; j < this->numBasisFcts; ++j) {
             for(Face &face: this->faces){
-                if(face.hasNode(this->nodeTags[i]) && face.hasNode(this->nodeTags[j])){
-                    Flux(i, j) += face.getFluxInt(a);
+                if(face.boundary){
+                    // Not flux at boundaries
+                    Flux(i) += 0.0;
                 }
-                else{
-                    Flux(i, j) += 0.0;
+                else {
+                    // If face is not a boundary
+                    // We get is element other side of face.
+                    int elOutTag = face.getSecondElement(this->tag);
+                    int idElOut;
+                    for(int i=0; i< elements.size(); ++i){
+                        if(elements[i].getTag() == tag)
+                            idElOut=  i;
+                    }
+                    Element elOut = elements[idElOut];
+
+                    // If Node 'i' is in Surface
+                    if(face.hasNode(this->nodeTags[i])){
+                        // Get indice of out solution
+                        for(int k=0; k<elOut.getNumNodes(); ++k) {
+                            if (this->getNodeTags()[i] == elOut.getNodeTags()[k]) {
+                                this->getData(numDataIn);
+                                elOut.getData(numDataOut);
+                                Flux(i) += ((numDataIn(i) + numDataOut(k)) / 2.)*face.getFluxInt(a);
+                            }
+                        }
+                    }
+                    else{
+                        // Shape function is zero on surface
+                        Flux(i) += 0.0;
+                    }
                 }
+
             }
         }
     }

@@ -57,7 +57,7 @@ public:
 
         bool hasNode(const int tag);
 
-        void getFlux(Eigen::MatrixXd &Flux, const Eigen::Vector3d &a);
+        void getFlux(Eigen::VectorXd &Flux, const Eigen::Vector3d &a, std::vector<Element> &elements);
 
         // Add face to element
         Element &addFace(Face face);

@@ -1,0 +1,1 @@
+C:/local/gmsh-4.1.4-Windows64-sdk/lib/gmsh.lib -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 

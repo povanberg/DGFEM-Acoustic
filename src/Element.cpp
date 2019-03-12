@@ -1,18 +1,13 @@
-//
-// Created by pierre-olivier on 24/02/19.
-//
-
 #include <gmsh.h>
 #include <gmshUtils.h>
 #include <iostream>
 #include "Element.h"
 #include <algorithm>
-#include <utils.h>
-#include "Eigen/Dense"
+#include <logger.h>
+#include <Eigen/Dense>
 
-Element::Element(int dim, int tag, std::vector<int> nodeTags) {
+Element::Element(int dim, int tag, std::vector<int> &nodeTags) {
 
-    // Global element informations (common to all elements, no hybrid mesh supported)
     this->dim = dim;
     this->tag = tag;
     this->nodeTags = nodeTags;
@@ -24,10 +19,80 @@ Element::Element(int dim, int tag, std::vector<int> nodeTags) {
             this->order,
             this->numNodes,
             this->paramCoord);
-
+    this->u.resize(this->numNodes);
 }
 
-bool Element::hasNode(int tag){
+// Add face to the element
+Element &Element::addFace(Face face){
+    this->faces.push_back(face);
+    return *this;
+}
+
+// Set jacobian for the element
+Element &Element::setJacobian(std::vector<double> &jacobian,
+                              std::vector<double> &detJacobian,
+                              std::vector<double> &xPoints,
+                              int numIntPoints){
+
+    this->numIntPoints = numIntPoints;
+    this->numBasisFcts = this->numNodes;
+    std::vector<double>::const_iterator gIt = jacobian.begin();
+    for(unsigned int g=0; g<this->numIntPoints; ++g, gIt+=9){
+        std::vector<double> gJacobian(gIt, gIt + 9);
+        this->jacobian.push_back(Eigen::Map<Eigen::Matrix3d>(gJacobian.data()).transpose());
+        this->invJacobian.push_back(this->jacobian[g].inverse());
+    }
+    this->detJacobian = Eigen::Map<Eigen::VectorXd>(detJacobian.data(), this->numIntPoints);
+    this->xPoints = Eigen::Map<Eigen::MatrixXd>(xPoints.data(), 3, this->numIntPoints).transpose();
+
+    return *this;
+}
+
+// Set basis functions for the element
+Element &Element::setBasis(std::vector<double> &ubasisFct,
+                           std::vector<double> &ugradBasisFct,
+                           std::vector<double> &uPoints) {
+
+    this->weights = Eigen::VectorXd(this->numIntPoints);
+    this->uPoints = Eigen::MatrixXd(this->numIntPoints, 3);
+    for(int g = 0; g < this->numIntPoints; ++g){
+        this->uPoints(g, 0) = uPoints[g*4+0];
+        this->uPoints(g, 1) = uPoints[g*4+1];
+        this->uPoints(g, 2) = uPoints[g*4+2];
+        this->weights(g) = uPoints[g*4+3];
+    }
+
+    Eigen::VectorXd ubasisFctEigen;
+    Eigen::MatrixXd ugradBasisFctEigen;
+    Eigen::MatrixXd xgradBasisFctEigen;
+    for(int f = 0; f < this->numBasisFcts; ++f) {
+        // Extract
+        std::vector<double> ubFct(this->numIntPoints);
+        std::vector<double> ubgradFct(this->numIntPoints*3);
+        for(int g = 0; g < this->numIntPoints; ++g){
+            ubFct[g] = ubasisFct[g*this->numBasisFcts+f];
+            ubgradFct[g*3+0] = ugradBasisFct[g*this->numBasisFcts*3+f*3+0];
+            ubgradFct[g*3+1] = ugradBasisFct[g*this->numBasisFcts*3+f*3+1];
+            ubgradFct[g*3+2] = ugradBasisFct[g*this->numBasisFcts*3+f*3+2];
+        }
+        // To Eigen
+        ubasisFctEigen = Eigen::Map<Eigen::VectorXd>(ubFct.data(), this->numIntPoints);
+        ugradBasisFctEigen = Eigen::Map<Eigen::MatrixXd>(ubgradFct.data(), 3, this->numIntPoints).transpose();
+        xgradBasisFctEigen = Eigen::MatrixXd(this->numIntPoints, 3);
+        // df/du -> df/dx
+        for(int g=0; g < this->numIntPoints; g++){
+            xgradBasisFctEigen.row(g) = ugradBasisFctEigen.row(g)*this->invJacobian[g];
+        }
+        // Store
+        this->basisFcts.push_back(ubasisFctEigen);
+        this->gradBasisFcts.push_back(xgradBasisFctEigen);
+    }
+    return *this;
+}
+
+// Check if element contains the face
+// with corresponding tag
+bool Element::hasNode(const int tag){
     auto it = std::find(this->nodeTags.begin(), this->nodeTags.end(), tag);
     if(it != this->nodeTags.end())
         return true;
@@ -35,74 +100,162 @@ bool Element::hasNode(int tag){
         return false;
 }
 
-Element &Element::addFace(Face face){
-    this->faces.push_back(face);
-    return *this;
+// Get element type
+const int &Element::getTag(){
+    return this->tag;
 }
 
-Element &Element::setJacobian(std::vector<double> &jacobian,
-                              std::vector<double> &detJacobian,
-                              std::vector<double> &xPoints,
-                              int numIntPoints){
-
-    for(int i=0; i<jacobian.size()/9; ++i){
-        Eigen::Vector3d tempxPoints;
-        Eigen::Matrix3d tempJacobian;
-        for(int j=0; j<3; ++j){
-            tempxPoints(j) = xPoints[i*3+j];
-            for(int k=0; k<3; ++k){
-                tempJacobian(j,k) = jacobian[i*9+j*3+k];
-            }
-        }
-        this->xPoints.push_back(tempxPoints);
-        this->jacobian.push_back(tempJacobian);
-        this->invJacobian.push_back(tempJacobian.inverse());
-    }
-    this->detJacobian = detJacobian;
-    this->numIntPoints = numIntPoints;
-    this->numBasisFcts = numIntPoints;
-    return *this;
+// Get element type
+const int &Element::getType(){
+    return this->type;
 }
 
-Element &Element::addBasis(std::vector<double> &ubasisFct,
-                           std::vector<double> &ugradBasisFct,
-                           std::vector<double> &uPoints) {
+// Get element order
+const int &Element::getOrder(){
+    return this->order;
+}
 
-    // Extract weigths
-    for(int it = 0; it < uPoints.size(); it += 4)
-        this->weights.push_back(uPoints[it+3]);
-    // Remove weights from points
-    for(int i=0; i<uPoints.size()/4; ++i){
-        Eigen::Vector3d tempuPoints;
-        Eigen::Vector3d tempFct;
-        for(int j=0; j<3; ++j){
-            tempuPoints(j) = uPoints[i*4+j];
-            tempFct(j) = uPoints[i*3+j];
+// Get element type name
+const std::string &Element::getName(){
+    return this->name;
+}
+
+// Get list of node tags
+std::vector<int> &Element::getNodeTags(){
+    return this->nodeTags;
+}
+
+// Get jacobian at gauss node g
+const Eigen::Matrix3d &Element::getJacobian(const int g){
+    return this->jacobian[g];
+}
+
+// Get inverse jacobian at gauss node g
+const Eigen::Matrix3d &Element::getInvJacobian(const int g){
+    return this->invJacobian[g];
+};
+
+// Get det jacobian for all g
+const Eigen::VectorXd &Element::getDetJacobian(){
+    return this->detJacobian;
+}
+
+// Get coordinates of gauss points
+const Eigen::MatrixXd &Element::getXPoints(){
+    return this->xPoints;
+};
+
+// Get parametric coordinates of gauss points
+const Eigen::MatrixXd &Element::getUPoints(){
+    return this->uPoints;
+}
+
+// Get weigths for integration points
+const Eigen::VectorXd &Element::getWeigths(){
+    return this->weights;
+}
+
+// Get Basis functions 'f' in numBasisFcts
+const Eigen::VectorXd &Element::getBasisFcts(const int f){
+    return this->basisFcts[f];
+}
+
+// Get Gradient Basis functions 'f' in numBasisFcts
+const Eigen::MatrixXd &Element::getGradBasisFcts(const int f){
+    return this->gradBasisFcts[f];
+}
+
+// Get number of nodes
+const int &Element::getNumNodes(){
+    return this->numNodes;
+}
+
+// Get element mass matrix
+void Element::getMassMatrix(Eigen::MatrixXd &massMatrix){
+    massMatrix.resize(this->numBasisFcts, this->numBasisFcts);
+    for(unsigned int i=0; i<this->numBasisFcts; ++i){
+        for(unsigned int j=0; j<this->numBasisFcts; ++j){
+            massMatrix(i,j) = weights.cwiseProduct(basisFcts[i])
+                                     .cwiseProduct(basisFcts[j])
+                                     .dot(detJacobian);
         }
-        this->uPoints.push_back(tempuPoints);
-        this->xbasisFct.push_back(tempFct);
     }
+}
 
-    // We have, df/du and want df/dx
-    // solution: df/dx = df/du * du/dx
-    // But jacobian is dx/du so inverse.
-    int n = 3; // Can be optimized using the dimension, but as gmsh give 3D values...
-    double dfdu, dfdx, dudx;
-    for(int i=0; i<this->numIntPoints; ++i){
+// Get element mass matrix
+void Element::getStiffMatrix(Eigen::MatrixXd &stiffMatrix, const Eigen::Vector3d &a){
+    stiffMatrix.resize(this->numBasisFcts, this->numBasisFcts);
+    for(unsigned int i=0; i<this->numBasisFcts; ++i){
+        for(unsigned int j=0; j<this->numBasisFcts; ++j){
+            stiffMatrix(i,j) = weights.cwiseProduct(gradBasisFcts[i]*a)
+                                      .cwiseProduct(basisFcts[j])
+                                      .dot(detJacobian);
+        }
+    }
+}
 
-        // Inverse and store invJacobian (=du/dx)
-        for(int j=0; j<this->numBasisFcts; ++j){
-            for(int x=0; x<n; ++x) {
-                dfdx = 0.;
-                for(int u=0; u<n; ++u) {
-                    dfdu = ugradBasisFct[i*n*numBasisFcts+j*numBasisFcts+u];
-                    dudx = this->invJacobian[i](u,x);
-                    dfdx += dfdu*dudx;
+void Element::getFlux(Eigen::VectorXd &Flux, const Eigen::Vector3d &a, std::vector<Element> &elements){
+    // Independent of numerical flux
+    Eigen::VectorXd numDataIn;
+    Eigen::VectorXd numDataOut;
+    Flux = Eigen::VectorXd::Zero(this->numBasisFcts);
+    for(unsigned int i=0; i<this->numBasisFcts; ++i) {
+        for (unsigned int j = 0; j < this->numBasisFcts; ++j) {
+            for(Face &face: this->faces){
+                if(face.boundary){
+                    // Not flux at boundaries
+                    Flux(i) += 0.0;
                 }
-                this->xgradBasisFct.push_back(dfdx);
+                else {
+                    // If face is not a boundary
+                    // We get is element other side of face.
+                    int elOutTag = face.getSecondElement(this->tag);
+                    int idElOut;
+                    for(int i=0; i< elements.size(); ++i){
+                        if(elements[i].getTag() == tag)
+                            idElOut=  i;
+                    }
+                    Element elOut = elements[idElOut];
+
+                    // If Node 'i' is in Surface
+                    if(face.hasNode(this->nodeTags[i])){
+                        // Get indice of out solution
+                        for(int k=0; k<elOut.getNumNodes(); ++k) {
+                            if (this->getNodeTags()[i] == elOut.getNodeTags()[k]) {
+                                this->getData(numDataIn);
+                                elOut.getData(numDataOut);
+                                Flux(i) += ((numDataIn(i) + numDataOut(k)) / 2.)*face.getFluxInt(a);
+                            }
+                        }
+                    }
+                    else{
+                        // Shape function is zero on surface
+                        Flux(i) += 0.0;
+                    }
+                }
+
             }
         }
     }
+}
 
-    return *this;
+/*
+void Element::getFlux(Eigen::MatrixXd &Flux, const Eigen::Vector3d &a){
+    // Independent of numerical flux
+
+    Flux.setZero();
+    for(Face &face: this->faces){
+        Eigen::MatrixXd tempFlux = Eigen::MatrixXd::Zero(this->numBasisFcts,this->numBasisFcts);
+        face.getFluxInt(tempFlux,a,this->nodeTags);
+        Flux += tempFlux;
+    }
+}
+*/
+
+void Element::getData(Eigen::VectorXd &data){
+    data = this->u;
+}
+
+void Element::setData(Eigen::VectorXd &data){
+    this->u = data;
 }

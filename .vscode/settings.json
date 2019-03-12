@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "cstdlib": "cpp",
         "array": "cpp",
         "*.tcc": "cpp",
         "cctype": "cpp",
@@ -7,7 +8,6 @@
         "cmath": "cpp",
         "cstdint": "cpp",
         "cstdio": "cpp",
-        "cstdlib": "cpp",
         "cwchar": "cpp",
         "cwctype": "cpp",
         "deque": "cpp",

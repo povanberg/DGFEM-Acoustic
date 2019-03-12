@@ -6,7 +6,6 @@
 #include "logger.h"
 #include "Mesh.h"
 #include "solver.h"
-#include "mass.h"
 
 int main(int argc, char **argv)
 {
@@ -14,17 +13,15 @@ int main(int argc, char **argv)
     // 1: the Mesh file (.msh)
     // 2: the config file (see, configParser.cpp)
     // e.g. ./dgarlerkin mymesh.msh myconfig.conf
-    if(argc!=3)
+    if(argc!=2)
     {
-        Error("Argument list too long.");
+        Error("Incorrect number of arguments");
         return E2BIG;
     }
 
     std::string msh_name = argv[1];
-    std::string config_name = argv[2];
 
     // Load simulation parameters
-    /*Config config = parseConfig(config_name);*/
 
     // Load Mesh
     gmsh::initialize();
@@ -43,10 +40,7 @@ int main(int argc, char **argv)
     Mesh mesh(msh_name);
 
     // Simulation
-    /*solver::solveForwardEuler(mesh, config);*/
-
-    // Creates the Mass matrix for each elements in the mesh
-    mass::createM(mesh);
+    solver::solveForwardEuler(mesh);
 
     //gmsh::fltk::run();
     gmsh::finalize();

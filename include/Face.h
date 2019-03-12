@@ -1,27 +1,55 @@
-//
-// Created by pierre-olivier on 24/02/19.
-//
+#include <string>
+#include <vector>
+#include <Eigen/Dense>
 
 #ifndef DGALERKIN_FACE_H
 #define DGALERKIN_FACE_H
 
-
-#include <string>
-#include <vector>
-
 class Face {
     private:
-    public:
-        Face(int tag, std::string name, int dim, int numNodes, int type, std::vector<int> nodeTags);
-        int tag;
-        std::string name;
-        int numNodes;
-        int type;
-        int dim;
-        std::vector<int> nodeTags;
-        std::vector<int> elementTags;
+        int tag;                                                            // Tag of the face
+        int dim;                                                            // Dimension of the face
+        int numNodes;                                                       // Number of nodes on surface
+        int type;                                                           // Type of the face
+        int numIntPoints;                                                   // Number of integration points
+        int numBasisFcts;                                                   // Number of basis fcts
+        std::string name;                                                   // Face Type name
+        std::vector<int> nodeTags;                                          // List of nodes of the face
+        std::vector<int> elementTags;                                       // List of adjacent element tags
+        Eigen::Vector3d normal;                                             // Normal (i) : n_i
+        Eigen::MatrixXd basisFcts;                                          // (f,g) : f=basis fct, g=gauss
+        Eigen::MatrixXd xPoints;                                            // (g,i) : g=int point; x_i
+        Eigen::MatrixXd uPoints;                                            // (g,i) : g=int point; u_i
+        Eigen::VectorXd weights;                                            // (g) : g=int point
+        std::vector<Eigen::Matrix3d> jacobian;                              // [g](i,j) : g=int point; dx_i/du_j
+        Eigen::VectorXd detJacobian;                                        // (g) : g=int point
 
+    public:
+        Face(int tag, std::string name, int dim, int numNodes, int type, std::vector<int> &nodeTags);
+
+        bool boundary;
+
+        void setNormal();
+        void setBasisFcts();
+        const int &getTag();
+        const std::vector<int> &getNodeTags();
+        const Eigen::Vector3d &getNormal();
+
+        bool hasNode(const int tag);
+
+        double getFluxInt(const Eigen::Vector3d &a);
+        /*double getFluxInt(Eigen::MatrixXd &Flux, const Eigen::Vector3d &a, const std::vector<int> &elementNodesTags);*/
+        int getSecondElement(const int tag1);
+
+        // Add adjacent element to the face
         Face &addElement(int tag);
+
+        // Set Jacobian
+        void setJacobian(std::vector<double> &jacobian,
+                         std::vector<double> &detJacobian,
+                         std::vector<double> &xPoints);
+
+
 };
 
 

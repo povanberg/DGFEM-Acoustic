@@ -74,8 +74,18 @@ void Face::setJacobian(std::vector<double> &jacobian,
 }
 
 // Add adjacent to the face
-Face &Face::addElement(int tag) {
+Face &Face::addElement(int tag, std::vector<int> eNodeTags){
     this->elementTags.push_back(tag);
+
+    std::vector<int>::iterator it;
+    Eigen::Vector2d elementNodes;
+
+    it = std::find(eNodeTags.begin(), eNodeTags.end(), this->nodeTags[0]);
+    elementNodes(0) = std::distance(eNodeTags.begin(), it);
+    it = std::find(eNodeTags.begin(), eNodeTags.end(), this->nodeTags[1]);
+    elementNodes(1) = std::distance(eNodeTags.begin(), it);
+    this->elementNodes.push_back(elementNodes);
+
     if(this->elementTags.size() > 1)
         this->boundary = false;
     else
@@ -97,52 +107,19 @@ int Face::getSecondElement(const int tag1){
     else
         return this->elementTags[0];
 }
-
+/*
 double Face::getFluxInt(const Eigen::Vector3d &a){
     return a.dot(this->normal)*weights.cwiseProduct(basisFcts.row(0).transpose())
                                       .cwiseProduct(basisFcts.row(1).transpose())
                                       .dot(detJacobian);
-    
-}
-
-/*
-double Face::getFluxInt(Eigen::MatrixXd &Flux, const Eigen::Vector3d &a, const std::vector<int> &elementNodesTags){
-
-    std::vector<int> trueNodeTags(2); // Expects the number of nodes = 2 of the face, so 2D case
-    std::vector<Eigen::VectorXd> trueBasisFcts; // [f](g) : f= basis fct; g=int point
-
-    for(int i=0; i<elementNodesTags.size(); ++i){
-        if(this->nodeTags[0] == elementNodesTags[i]){
-        trueNodeTags[0] = i;
-        }
-        if(this->nodeTags[1] == elementNodesTags[i]){
-        trueNodeTags[1] = i;
-        }
-    }
-
-    for(int i=0; i<this->numIntPoints; ++i){
-        Eigen::VectorXd tempBasisFcts(elementNodesTags.size());
-        for(int j=0; j<elementNodesTags.size(); ++j){
-            if(j==trueNodeTags[0]){
-                tempBasisFcts(j) = this->basisFcts(i,0);
-            }
-            else if(j==trueNodeTags[1]){
-                tempBasisFcts(j) = this->basisFcts(i,1);
-            }
-            else{
-               tempBasisFcts(j) = 0;
-            } 
-        }
-        trueBasisFcts.push_back(tempBasisFcts);
-    }
-
-    for(int i=0; i<this->numIntPoints; ++i){
-        Flux += this->weights[i]*trueBasisFcts[i]*trueBasisFcts[i].transpose()*this->detJacobian[i];
-    }
-
-    Flux = a.dot(this->normal)*Flux;                          
 }
 */
+void Face::getFluxInt(Eigen::Vector2d &faceFlux, Eigen::Vector2d &uFace, const Eigen::Vector3d &a){
+    faceFlux.setZero();
+    for(int i=0; i<this->numNodes; ++i){
+        faceFlux += this->weights[i]*(a.dot(this->normal))*(this->basisFcts.col(i)*this->basisFcts.col(i).transpose())*uFace*this->detJacobian(i);
+    }
+}
 
 // Get Nodes tags
 const std::vector<int> &Face::getNodeTags(){
@@ -157,4 +134,9 @@ const int &Face::getTag(){
 // Get normal
 const Eigen::Vector3d &Face::getNormal(){
     return this->normal;
+}
+
+//Get Dimension
+const int &Face::getDim(){
+    return this->dim;
 }

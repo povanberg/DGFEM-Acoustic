@@ -25,7 +25,7 @@ class Mesh {
 
         void getMassMatrix(Eigen::SparseMatrix<double> &M);
         void getStiffMatrix(Eigen::SparseMatrix<double> &K, const Eigen::Vector3d &a);
-        void getFlux(Eigen::VectorXd &F, const Eigen::Vector3d &a);
+        void getFlux(Eigen::VectorXd &F, const Eigen::Vector3d &a, const Eigen::VectorXd &u);
 
         Element &getDataElement(const int tag);
         void getNodeTags(std::vector<int> &nodeTags);

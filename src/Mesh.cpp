@@ -42,14 +42,20 @@ Mesh::Mesh(std::string name) :  name(name){
         // Gmsh api call
         std::vector<int> elementTags;
         std::vector<int> nodeTags;
+        std::vector<double> barycenters;
         int elementType = gmshUtils::getElementType(this->dim);
         gmsh::model::mesh::getElementsByType(elementType, elementTags, nodeTags, entityTag);
+        gmsh::model::mesh::getBarycenters(elementType, -1, false, true, barycenters);
         // Object assignment
         std::vector<int>::const_iterator elIt = nodeTags.begin();
         int numNodes = (int) nodeTags.size() / elementTags.size();
         for(int i=0; i<elementTags.size(); ++i, elIt+=numNodes) {
             std::vector<int> elementNodes(elIt, elIt+numNodes);
-            Element element(this->dim, elementTags[i], elementNodes);
+            Eigen::Vector3d barycenter;
+            barycenter(0) = barycenters[3*i+0];
+            barycenter(1) = barycenters[3*i+1];
+            barycenter(2) = barycenters[3*i+2];
+            Element element(this->dim, elementTags[i], elementNodes, barycenter);
             this->elements.push_back(element);
         }
         Log("Elements loaded");
@@ -89,8 +95,11 @@ Mesh::Mesh(std::string name) :  name(name){
         gmsh::model::mesh::getBasisFunctions(this->elements[0].getType(), "Gauss3", "GradLagrange",
                                              integrationPoints, numComp, gradBasisFunctions);
         // Object assignment
-        for(int i=0; i<elementTags.size(); ++i)
+        for(int i=0; i<elementTags.size(); ++i){
             this->elements[i].setBasis(basisFunctions, gradBasisFunctions, integrationPoints);
+            }
+
+
         Log("Basis functions loaded");
     }
 
@@ -139,6 +148,7 @@ Mesh::Mesh(std::string name) :  name(name){
         Face face(faceTags[i], faceName, this->dim-1, faceNumNodes, faceType, faceNodeTagsCurrent);
         face.setJacobian(elementJacobian, elementDet, elementPoints);
 
+        int indice = 0;
         for(auto element = std::begin(this->elements); element!=std::end(this->elements); ++element) {
             bool hasFace = true;
             for (auto &node : face.getNodeTags()) {
@@ -146,12 +156,29 @@ Mesh::Mesh(std::string name) :  name(name){
                     hasFace = false;
             }
             if(hasFace) {
-                face.addElement(element->getTag());
+                face.addElement(element->getTag(), element->getNodeTags());
+            }
+            ++ indice;
+        }
+        for(auto element = std::begin(this->elements); element!=std::end(this->elements); ++element) {
+            bool hasFace = true;
+            for (auto &node : face.getNodeTags()) {
+                if(!element->hasNode(node))
+                    hasFace = false;
+            }
+            if(hasFace) {
                 element->addFace(face);
             }
         }
+
     }
     Log("Faces loaded");
+
+    for(int i=0; i<this->elements.size(); ++i){
+        this->elements[i].setNormals();
+        //this-elements[i].barycenter = barycenters[i]
+    }
+    Log("Elements normals loaded");
 
     //for (std::vector<int>::const_iterator i = this->faceTags.begin(); i != this->faceTags.end(); ++i)
     //    std::cout << *i << ' ';
@@ -206,46 +233,48 @@ void Mesh::getStiffMatrix(Eigen::SparseMatrix<double> &K, const Eigen::Vector3d 
     // Triplets -> Sparse
     K.setFromTriplets(tripletList.begin(), tripletList.end());
 }
-
+/*
 void Mesh::getFlux(Eigen::VectorXd &F, const Eigen::Vector3d &a) {
     int offset = 0;
-    F.resize(this->elements.size()*this->elements[0].getNumNodes());
+    F.resize(this->elements.size() * this->elements[0].getNumNodes());
     // Loop over elements
-    for(Element& el : this->elements) {
+    for (Element &el : this->elements) {
 
-        Eigen::Vector3d numFlux;
-        Eigen::MatrixXd elF;
-        el.getFlux(elF, a);
+        Eigen::VectorXd numFlux;
+        el.getFlux(numFlux, a, this->elements);
 
-        // Depends on numerical flux : (In+Out)/2
-        Eigen::VectorXd numDataIn;
-        Eigen::VectorXd numDataOut;
-        for(int i=0; i<el.getNumNodes(); ++i){
-            for(Face &face: el.faces) {
-                if(face.boundary){
-                    numFlux(i) = 0.0;
-                }
-                else {
-                    int elOutTag = face.getSecondElement(el.getTag());
-                    Element elOut = getElement(elOutTag);
-                    for(int j=0; j<elOut.getNumNodes(); ++j){
-                        if(el.getNodeTags()[i] == el.getNodeTags()[j]){
-                            el.getData(numDataIn);
-                            elOut.getData(numDataOut);
-                            numFlux(i) = (numDataIn(i)+numDataOut(j))/2;
-                        }
-                    }
-                }
-            }
-        }
-
-        Eigen::VectorXd FF = elF*numFlux;
-        F(offset+0)= FF(0);
-        F(offset+1)= FF(2);
-        F(offset+1)= FF(2);
-        F(offset+1)= FF(2);
+        //Eigen::VectorXd FF = elF*numFlux;
+        F(offset + 0) = numFlux(0);
+        F(offset + 1) = numFlux(1);
+        F(offset + 2) = numFlux(2);
         offset += el.getNumNodes();
     }
+    Eigen::VectorXd data;
+    this->getData(data);
+}
+*/
+void Mesh::getFlux(Eigen::VectorXd &F, const Eigen::Vector3d &a, const Eigen::VectorXd &u) {
+    int offset = 0;
+    F.resize(this->elements.size() * this->elements[0].getNumNodes());
+    // Loop over elements
+    for (Element &el : this->elements) {
+
+        Eigen::VectorXd numFlux;
+        Eigen::VectorXd elSol(el.getNumNodes());
+
+        elSol(0) = u(offset + 0);
+        elSol(1) = u(offset + 1);
+        elSol(2) = u(offset + 2);
+
+        el.getFlux(numFlux, a, this->elements, elSol);
+
+        F(offset + 0) = numFlux(0);
+        F(offset + 1) = numFlux(1);
+        F(offset + 2) = numFlux(2);
+        offset += el.getNumNodes();
+    }
+    Eigen::VectorXd data;
+    this->getData(data);
 }
 
 Element &Mesh::getElement(const int tag){
@@ -274,7 +303,14 @@ void Mesh::getData(Eigen::VectorXd &data){
     Eigen::VectorXd elData;
     for(Element& el : this->elements) {
         el.getData(elData);
-        data << data, elData;
+        if(data.size() == 0){
+            data = elData;
+        }
+        else{
+            Eigen::VectorXd temp(data.size()+elData.size());
+            temp << data, elData;
+            data = temp;
+        }
     }
 }
 

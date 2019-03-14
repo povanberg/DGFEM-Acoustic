@@ -23,6 +23,7 @@ class Face {
         Eigen::VectorXd weights;                                            // (g) : g=int point
         std::vector<Eigen::Matrix3d> jacobian;                              // [g](i,j) : g=int point; dx_i/du_j
         Eigen::VectorXd detJacobian;                                        // (g) : g=int point
+        std::vector<Eigen::Vector2d> elementNodes;                          // [e](n) : e=element; n=node of the face
 
     public:
         Face(int tag, std::string name, int dim, int numNodes, int type, std::vector<int> &nodeTags);
@@ -34,15 +35,14 @@ class Face {
         const int &getTag();
         const std::vector<int> &getNodeTags();
         const Eigen::Vector3d &getNormal();
+        const int &getDim();
 
         bool hasNode(const int tag);
-
-        double getFluxInt(const Eigen::Vector3d &a);
-        /*double getFluxInt(Eigen::MatrixXd &Flux, const Eigen::Vector3d &a, const std::vector<int> &elementNodesTags);*/
+        void getFluxInt(Eigen::Vector2d &faceFlux, Eigen::Vector2d &uFace, const Eigen::Vector3d &a);
         int getSecondElement(const int tag1);
 
         // Add adjacent element to the face
-        Face &addElement(int tag);
+        Face &addElement(int tag, std::vector<int> eNodeTags);
 
         // Set Jacobian
         void setJacobian(std::vector<double> &jacobian,

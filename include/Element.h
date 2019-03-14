@@ -29,14 +29,17 @@ class Element {
         Eigen::VectorXd weights;                                        // (g) : g=int point
         std::vector<Eigen::VectorXd> basisFcts;                         // [f](g) : f= basis fct; g=int point
         std::vector<Eigen::MatrixXd> gradBasisFcts;                     // [f](g,i) : f= fct; g=int point; i=df/dx_i
+        std::vector<Eigen::Vector3d> normals;
+        Eigen::Vector3d barycenter;
         //----------------------------------------------------------------------------------------------------------
         Eigen::VectorXd u;
 public:
-        Element(int dim, int tag, std::vector<int> &nodeTags);
+        Element(int dim, int tag, std::vector<int> &nodeTags, Eigen::Vector3d &barycenter);
         std::vector<Face> faces;
         //----------------------------------------------------------------------------------------------------------
         const int &getTag();
         const int &getType();
+        void setNormals();
         const int &getOrder();
         const int &getNumNodes();
         std::vector<int> &getNodeTags();
@@ -56,8 +59,7 @@ public:
         //----------------------------------------------------------------------------------------------------------
 
         bool hasNode(const int tag);
-
-        void getFlux(Eigen::VectorXd &Flux, const Eigen::Vector3d &a, std::vector<Element> &elements);
+        void getFlux(Eigen::VectorXd &Flux, const Eigen::Vector3d &a, std::vector<Element> &elements, Eigen::VectorXd &u);
 
         // Add face to element
         Element &addFace(Face face);

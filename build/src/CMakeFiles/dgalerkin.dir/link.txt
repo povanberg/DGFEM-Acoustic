@@ -1,3 +1,0 @@
-"C:\Program Files\CMake\bin\cmake.exe" -E remove -f CMakeFiles\dgalerkin.dir/objects.a
-C:\mingw-w64\mingw64\bin\ar.exe cr CMakeFiles\dgalerkin.dir/objects.a @CMakeFiles\dgalerkin.dir\objects1.rsp
-C:\mingw-w64\mingw64\bin\g++.exe -O3 -DNDEBUG   -Wl,--whole-archive CMakeFiles\dgalerkin.dir/objects.a -Wl,--no-whole-archive  -o ..\bin\dgalerkin.exe -Wl,--out-implib,..\bin\libdgalerkin.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\dgalerkin.dir\linklibs.rsp

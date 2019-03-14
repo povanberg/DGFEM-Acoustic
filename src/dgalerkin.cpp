@@ -15,13 +15,11 @@ int main(int argc, char **argv)
     // e.g. ./dgarlerkin mymesh.msh myconfig.conf
     if(argc!=2)
     {
-        Error("Incorrect number of arguments");
+        Error("incorrect number of arguments.");
         return E2BIG;
     }
 
     std::string msh_name = argv[1];
-
-    // Load simulation parameters
 
     // Load Mesh
     gmsh::initialize();

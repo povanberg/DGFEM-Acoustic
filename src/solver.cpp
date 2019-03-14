@@ -53,7 +53,7 @@ namespace solver {
         Eigen::SparseMatrix<double> M_inv = solver.solve(I);
 
         // Compute stiffness (or convection) matrix
-        Eigen::Vector3d a = {1, 1, 0}; // advection coefficient
+        Eigen::Vector3d a = {1, 0, 0}; // advection coefficient
         Eigen::SparseMatrix<double> K;
         mesh.getStiffMatrix(K, a);
 
@@ -67,7 +67,7 @@ namespace solver {
         double t0 = 0;
         double tf = 1;
         int step = 0;
-        double dt = 0.1;
+        double dt = 1e-2;
         for(double t=t0; t<tf; t+=dt, ++step) {
 
             // Savings
@@ -77,10 +77,11 @@ namespace solver {
 
             // Get Flux
             Eigen::VectorXd F;
-            mesh.getFlux(F, a);
+            mesh.getFlux(F, a, u);
 
             // FE step
-            u_next = u + dt*M_inv*(K*u - F);
+            //u_next = u + dt*M_inv*(K*u - F);
+            u_next = u + dt*M_inv*(u);
 
             // Update previous value: u <- u_next
             u = u_next;
@@ -88,7 +89,7 @@ namespace solver {
 
             Log("[%f/%f] Simulation time step.", t, tf);
         }
-
+        
         gmsh::view::write(viewTag, "data.msh");
     }
 }

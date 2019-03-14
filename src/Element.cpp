@@ -6,7 +6,7 @@
 #include <logger.h>
 #include <Eigen/Dense>
 
-Element::Element(int dim, int tag, std::vector<int> &nodeTags) {
+Element::Element(int dim, int tag, std::vector<int> &nodeTags, Eigen::Vector3d &barycenter) {
 
     this->dim = dim;
     this->tag = tag;
@@ -20,12 +20,44 @@ Element::Element(int dim, int tag, std::vector<int> &nodeTags) {
             this->numNodes,
             this->paramCoord);
     this->u.resize(this->numNodes);
+    this->barycenter = barycenter;
 }
 
 // Add face to the element
 Element &Element::addFace(Face face){
     this->faces.push_back(face);
     return *this;
+}
+
+void Element::setNormals(){
+
+    for(Face& fa : this->faces){
+        Eigen::Vector3d normal;
+        Eigen::Vector3d nTest;
+        std::vector<double> coord1;
+        std::vector<double> coord2;
+        std::vector<double> paramCoords;
+        gmsh::model::mesh::getNode(fa.getNodeTags().front(), coord1, paramCoords);
+        gmsh::model::mesh::getNode(fa.getNodeTags().back(), coord2, paramCoords);
+
+        switch(fa.getDim()){
+            case 0:
+                // Not done yet
+                break;
+            case 1:
+                normal = {coord1[1]-coord2[1], coord2[0]-coord1[0], 0};
+                nTest = {coord1[0]-barycenter[0], coord1[1]-barycenter[1], 0};
+                if(normal.dot(nTest)<0){
+                    normal = -normal;
+                }
+                normal.normalize();
+                break;
+            case 2:
+                // Not done yet
+                break;
+        }
+        this->normals.push_back(normal);
+    }
 }
 
 // Set jacobian for the element
@@ -40,7 +72,7 @@ Element &Element::setJacobian(std::vector<double> &jacobian,
     for(unsigned int g=0; g<this->numIntPoints; ++g, gIt+=9){
         std::vector<double> gJacobian(gIt, gIt + 9);
         this->jacobian.push_back(Eigen::Map<Eigen::Matrix3d>(gJacobian.data()).transpose());
-        this->invJacobian.push_back(this->jacobian[g].inverse());
+        this->invJacobian.push_back(this->jacobian[g].inverse().transpose()); // TRANSPOSE INV JACOBIAN
     }
     this->detJacobian = Eigen::Map<Eigen::VectorXd>(detJacobian.data(), this->numIntPoints);
     this->xPoints = Eigen::Map<Eigen::MatrixXd>(xPoints.data(), 3, this->numIntPoints).transpose();
@@ -193,7 +225,7 @@ void Element::getStiffMatrix(Eigen::MatrixXd &stiffMatrix, const Eigen::Vector3d
         }
     }
 }
-
+/*
 void Element::getFlux(Eigen::VectorXd &Flux, const Eigen::Vector3d &a, std::vector<Element> &elements){
     // Independent of numerical flux
     Eigen::VectorXd numDataIn;
@@ -238,19 +270,36 @@ void Element::getFlux(Eigen::VectorXd &Flux, const Eigen::Vector3d &a, std::vect
         }
     }
 }
-
-/*
-void Element::getFlux(Eigen::MatrixXd &Flux, const Eigen::Vector3d &a){
-    // Independent of numerical flux
-
-    Flux.setZero();
-    for(Face &face: this->faces){
-        Eigen::MatrixXd tempFlux = Eigen::MatrixXd::Zero(this->numBasisFcts,this->numBasisFcts);
-        face.getFluxInt(tempFlux,a,this->nodeTags);
-        Flux += tempFlux;
+*/
+void Element::getFlux(Eigen::VectorXd &Flux, const Eigen::Vector3d &a, std::vector<Element> &elements, Eigen::VectorXd &u){
+    Flux = Eigen::VectorXd::Zero(this->numNodes);
+    for(int i=0; i<this->faces.size(); ++i){
+        Eigen::Vector2d faceFlux;
+        Eigen::Vector2d uFace;
+        uFace.setZero();
+        if(i=0){
+            uFace(0) += u(0);
+            uFace(1) += u(1);
+            this->faces[i].getFluxInt(faceFlux, uFace, a);
+            Flux(0) += faceFlux(0);
+            Flux(1) += faceFlux(1);
+        }
+        if(i=1){
+            uFace(0) += u(1);
+            uFace(1) += u(2);
+            this->faces[i].getFluxInt(faceFlux, uFace, a);
+            Flux(1) += faceFlux(0);
+            Flux(2) += faceFlux(1);
+        }
+        if(i=2){
+            uFace(0) = u(0);
+            uFace(1) = u(2);
+            this->faces[i].getFluxInt(faceFlux, uFace, a);
+            Flux(0) += faceFlux(0);
+            Flux(2) += faceFlux(1);
+        }
     }
 }
-*/
 
 void Element::getData(Eigen::VectorXd &data){
     data = this->u;

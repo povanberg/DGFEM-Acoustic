@@ -90,7 +90,7 @@ public:
     inline int &fId(int fTag){
         return m_fIds[fTag];
     };
-    // Getter : (el, f) -> f-th face tag for element 'el'
+    // Getter : (el, f) -> f-th face id for element 'el'
     inline int &elFId(int el, int f=0) {
         return m_elFIds[el*m_fNumPerEl +f];
     }

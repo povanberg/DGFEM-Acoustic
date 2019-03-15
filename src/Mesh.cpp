@@ -23,12 +23,16 @@ void getUniqueFaceNodeTags(std::vector<int> &elFNodeTags, const int fNumPerEl, s
     fNodeTags = elFNodeTags;
 
     // Remove identical faces
-    for(std::vector<int>::iterator it = fNodeTags.begin(); it != fNodeTags.end();)
-    {
-        auto it_duplicate = std::search(it+fNumPerEl, fNodeTags.end(), it, it+fNumPerEl);
+    for(std::vector<int>::iterator it = fNodeTags.begin(); it != fNodeTags.end();) {
 
-        if(it_duplicate != fNodeTags.end())
-            fNodeTags.erase(it_duplicate, it_duplicate+fNumPerEl);
+        std::vector<int>::iterator it_d;
+        for(it_d= it+fNumPerEl; it_d != fNodeTags.end(); it_d+=fNumPerEl) {
+            if(std::equal(it, it+fNumPerEl, it_d))
+                break;
+        }
+
+        if(it_d != fNodeTags.end())
+            fNodeTags.erase(it_d, it_d+fNumPerEl);
         else
             it+=fNumPerEl;
     }
@@ -87,7 +91,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     gmsh::model::mesh::getBasisFunctions(m_elType[0], m_elIntType, "Grad"+config.elementType,
                                          m_elIntParamCoords, *new int, m_elUGradBasisFcts);
 
-    // Gmsh provides the derivative of the shape functions along
+    // Gmsh provides the derivative of the shape functions alongnumNodes
     // the parametric directions. We therefore compute their derivative
     // along the physical directions thanks to composed derivative.
     // The system can be expressed as J^T * df/dx = df/du
@@ -158,6 +162,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
         gmsh::model::mesh::getElementFaceNodes(m_elType[0], 3, m_elFNodeTags, -1);
     m_fNumPerEl = m_elFNodeTags.size() / (m_elNum*m_fNumNodes);
     getUniqueFaceNodeTags(m_elFNodeTags, m_fNumNodes, m_fNodeTags);
+
 
     // We hereby create a single entity containing all the
     // unique faces. We call Gmsh with empty face tags and
@@ -242,8 +247,6 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
             }
         }
     }
-    std::cout << m_elFIds.size() << std::endl;
-    std::cout << m_elNum*m_fNumPerEl << std::endl;
     assert(m_elFIds.size() == m_elNum*m_fNumPerEl);
 
     // For efficiency purposes we also directly store the mapping
@@ -292,7 +295,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     assert(m_fIsBoundary.size() == m_fNum);
 
 
-
+        //auto it_duplicate = std::search(it+fNumPerEl, fNodeTags.end(), it, it+fNumPerEl);
     /*print(m_fTags, 1, true);
     std::cout << "------------------------" << std::endl;
     print(m_fNodeTags, m_fNumNodes, true);
@@ -387,6 +390,7 @@ void Mesh::getFlux(const int f, double* a, double * u, double* F) {
     }
 }
 
+// Precompute the flux through all surfaces
 void Mesh::precomputeFlux(double* a, double * u) {
     m_fFlux.resize(m_fNum*m_fNumNodes);
     for(int f=0; f<m_fNum; ++f) {
@@ -404,7 +408,7 @@ void Mesh::getElFlux(const int el, double* F) {
     for(int f=0; f<m_fNumPerEl; ++f) {
         el == fNbrElId(elFId(el, f), 0) ? i = 0 : i = 1;
         for(int nf=0; nf<m_fNumNodes; ++nf) {
-            F[fNToElNId(elFId(el, f), nf, i)] += elFOrientation(el, elFId(el, f))*fFlux(elFId(el, f), nf);
+            F[fNToElNId(elFId(el, f), nf, i)] += elFOrientation(el, f)*fFlux(elFId(el, f), nf);
         }
     }
 }

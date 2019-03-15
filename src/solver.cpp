@@ -21,6 +21,7 @@ namespace solver {
         // Solution vectors
         std::vector<int> nodeTags(&mesh.elNodeTag(0), &mesh.elNodeTag(0) + mesh.getNumNodes());
         std::vector<double> u(mesh.getNumNodes());
+        std::vector<double> u_prev(mesh.getNumNodes());
 
         // The mass matrix is invariant along iteration
         mesh.precomputeMassMatrix();
@@ -36,7 +37,7 @@ namespace solver {
         std::vector<double> parametricCoord;
         for(int n=0; n<mesh.getNumNodes(); n++) {
             gmsh::model::mesh::getNode(nodeTags[n], coord, parametricCoord);
-            u[n] = f(coord);
+            u_prev[n] = f(coord);
         }
 
         // Convection vector
@@ -52,12 +53,12 @@ namespace solver {
             gmsh::logger::write("[" + std::to_string(t) + "/" + std::to_string(tf) +
                                 "s] Step number : " + std::to_string(step));
 
+            u = u_prev;
+
             // Savings
-            if(step%10) {
-                for (int i = 0; i < nodeTags.size(); ++i)
-                    solution[i][0] = u[i];
-                gmsh::view::addModelData(viewTag, step, names[0], "NodeData", nodeTags, solution, t, 1);
-            }
+            for (int i = 0; i < nodeTags.size(); ++i)
+                solution[i][0] = u[i];
+            gmsh::view::addModelData(viewTag, step, names[0], "NodeData", nodeTags, solution, t, 1);
 
             // Recompute flux for all surfaces
             mesh.precomputeFlux(a.data(), u.data());
@@ -71,13 +72,23 @@ namespace solver {
                 mesh.getElStiffVector(el, a.data(), u.data(), elStiffvector);
 
                 // u_next = u + dt*M^-1*(K-F)
-                char TRANS = 'T';
+                /*char TRANS = 'T';
                 int INC = 1;
                 int N = mesh.getElNumNodes();
                 double alpha=dt;
                 double beta=1;
                 lapack::minus(elStiffvector, elFlux, N);
-                dgemv_(TRANS, N, N, alpha, &mesh.elMassMatrix(el), N, &elStiffvector[0], INC, beta, &u[el*N], INC);
+                dgemv_(TRANS, N, N, alpha, &mesh.elMassMatrix(el), N, &elStiffvector[0], INC, beta, &u_prev[el*N], INC);*/
+
+                // Eigen version
+                int N = mesh.getElNumNodes();
+                Eigen::Map<Eigen::MatrixXd> _elMassMatrix(&mesh.elMassMatrix(el), N, N);
+                Eigen::Map<Eigen::VectorXd> _elFlux(elFlux, N);
+                Eigen::Map<Eigen::VectorXd> _elStiffVector(elStiffvector, N);
+                Eigen::Map<Eigen::VectorXd> _u(&u_prev[el*N], N);
+
+                _u = _u + dt*_elMassMatrix*(_elStiffVector-_elFlux);
+
             }
 
         }

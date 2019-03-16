@@ -104,7 +104,7 @@ public:
     }
     // Getter (el, f) -> orienation of the face 'f' for element 'el'
     inline int &elFOrientation( int el, int f) {
-        m_elFOrientation[el*m_fNumPerEl+f];
+        return m_elFOrientation[el*m_fNumPerEl+f];
     }
     // Getter : (el, i, j) -> i-th row and j-th column of 'el' mass matrix
     inline double &elMassMatrix(int el, int i=0, int j=0) {

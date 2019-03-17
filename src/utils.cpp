@@ -20,7 +20,8 @@ extern "C" {
     double ddot_(int* N, double* DX, int* INCX, double* DY, int* INCY);
 
     // Matrix/vector product:  y := alpha*A*x + beta*y,
-    void dgemv_(char* TRANS, int *M, int *N, double *a, double *A, int *LDA, double* X, int *INCX, double *Y, int* INCY);
+    void dgemv_(char& TRANS, int& M, int& N, double& a, double* A,
+            int& LDA, double* X, int& INCX, double& beta, double* Y, int& INCY);
 }
 
 
@@ -61,6 +62,14 @@ namespace lapack {
         double norm;
         norm = dlange_(&NORM, &LDA, &N, A, &LDA, WORK);
         for(int i=0; i<N; i++){A[i] /= norm;};
+    }
+
+    // Matrix/vector product:  y := alpha*A*x + y
+    void linEq(double *A, double *X, double *Y, double &alpha, int &N){
+        char TRANS = 'T';
+        int INC = 1;
+        double beta=1;
+        dgemv_(TRANS, N, N, alpha, A, N, X, INC, beta, Y, INC);
     }
 
     // Dot product between 2 vectors

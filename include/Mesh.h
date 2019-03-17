@@ -136,6 +136,12 @@ public:
     void precomputeFlux(double* a, double * u);
     // Compute Numerical Flux through element 'el'
     void getElFlux(const int el, double* F);
+    // Return the list of nodes for each unique face given a list of node per face and per elements
+    // elFNodeTags : nodes for each face of each element
+    //               [e1f1n1, e1f1n2, ... , e1f2n1, ..., e2f1n1, ....]
+    // fNodeTags : nodes for each unique face
+    //             [f1n1, f1n2, ... , f2n1, f2n2, ....]
+    void getUniqueFaceNodeTags(std::vector<int> &elFNodeTags, std::vector<int> &fNodeTags);
 
 private:
     std::string name;

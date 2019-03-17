@@ -11,61 +11,6 @@
 #include "Mesh.h"
 #include "utils.h"
 
-// Return a unique list nodes for each face given a list
-// of faces per elements.
-void getUniqueFaceNodeTags(std::vector<int> &elFNodeTags, const int fNumPerEl, std::vector<int> &fNodeTags) {
-
-    // Sort nodes on each faces
-    for(int i=0; i<elFNodeTags.size(); i+=fNumPerEl)
-        std::sort(elFNodeTags.begin()+i, elFNodeTags.begin()+(i+fNumPerEl));
-
-    // Using assignment operator to copy one vector to other
-    fNodeTags = elFNodeTags;
-
-    // Remove identical faces
-    for(std::vector<int>::iterator it = fNodeTags.begin(); it != fNodeTags.end();) {
-
-        std::vector<int>::iterator it_d;
-        for(it_d= it+fNumPerEl; it_d != fNodeTags.end(); it_d+=fNumPerEl) {
-            if(std::equal(it, it+fNumPerEl, it_d))
-                break;
-        }
-
-        if(it_d != fNodeTags.end())
-            fNodeTags.erase(it_d, it_d+fNumPerEl);
-        else
-            it+=fNumPerEl;
-    }
-}
-
-#include <iomanip>
-template<typename Container>
-void print(const Container& cont, int row = 1, bool colMajor=false) {
-
-    if(colMajor){
-        for(int rowIt=0; rowIt<row; ++rowIt){
-            int colIt = 0;
-            for (auto const& x : cont) {
-                if(colIt%row == rowIt) {
-                    std::cout << std::setprecision(4) << std::left << std::setw(10) << x << " ";
-                }
-                colIt++;
-            }
-            std::cout << std::endl;
-        }
-    }
-    else {
-        int colIt = 0;
-        for (auto const& x : cont) {
-            std::cout << std::setprecision(4) << std::left << std::setw(10) << x << " ";
-            colIt++;
-            if(colIt%row == 0)
-                std::cout << std::endl;
-        }
-    }
-
-}
-
 // Mesh constructor: load the mesh parameters
 // from Gmsh api and create the elements mapping.
 Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
@@ -91,40 +36,33 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     gmsh::model::mesh::getBasisFunctions(m_elType[0], m_elIntType, "Grad"+config.elementType,
                                          m_elIntParamCoords, *new int, m_elUGradBasisFcts);
 
-    // Gmsh provides the derivative of the shape functions alongnumNodes
+    // Gmsh provides the derivative of the shape functions along
     // the parametric directions. We therefore compute their derivative
     // along the physical directions thanks to composed derivative.
     // The system can be expressed as J^T * df/dx = df/du
     // |dx/du dx/dv dx/dw|^T  |df/dx|   |df/du|
     // |dy/du dy/dv dy/dw|  * |df/dy| = |df/dv|
-    // |dw/du dw/dv dw/dw|    |df/dz|   |df/dw|
+    // |dz/du dz/dv dz/dw|    |df/dz|   |df/dw|
     // NB: Instead of transposing, we take advantages of the fact
     // Lapack/Blas use column major while Gmsh provides row major.
     int jacobianSize = 3;
     std::vector<double> jacobian(jacobianSize*jacobianSize);
     m_elGradBasisFcts = std::vector<double>(m_elNum*m_elNumNodes*m_elNumIntPts*3);
+    std::fill(m_elGradBasisFcts.begin(), m_elGradBasisFcts.end(),0);
     for (int el = 0; el < m_elNum; ++el) {
         for (int g = 0; g < m_elNumIntPts; ++g) {
             for (int f = 0; f < m_elNumNodes; ++f) {
                 // The copy operations are not required. They're simply enforced
                 // to ensure that the inputs (jacobian, grad) remains unchanged.
-                std::copy(&elJacobian(el, g), &elJacobian(el, g) + 9, jacobian.begin());
-                std::copy(&elUGradBasisFct(g, f), &elUGradBasisFct(g, f) + 3, &elGradBasisFct(el, g, f));
-                lapack::solve(jacobian.data(), &elGradBasisFct(el, g, f), jacobianSize);
+                for(int i=0; i<m_elDim; ++i){
+                    for(int j=0; j<m_elDim; ++j) {
+                        jacobian[i*m_elDim+j] = elJacobian(el, g, i, j);
+                    }
+                }
+                std::copy(&elUGradBasisFct(g, f), &elUGradBasisFct(g, f) + m_elDim, &elGradBasisFct(el, g, f));
+                lapack::solve(jacobian.data(), &elGradBasisFct(el, g, f), m_elDim);
             }
         }
-    }
-
-    // Map the element 'tag' to the face 'ID':
-    // - element tag = unique integer associated to the element by Gmsh
-    // - element id = indice in 'm_f*' vector storage
-    // This hypothesis rely on fact that Gmsh could provide non-zero
-    // starting or non-continuous sequence of face tags.
-    // e.g. m_elTags = [23, 24, 25, 78, 79 ...] => m_elIds = [0, 1, 2, 3, 4]
-    for(int elId=0; elId<m_elNum; ++elId) {
-        if(m_elIds.size() <= m_elTags[elId])
-            m_elIds.resize(m_elTags[elId]);
-        m_elIds.insert(m_elIds.begin()+m_elTags[elId],elId);
     }
 
     assert(m_elType.size() == 1);
@@ -161,7 +99,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     else
         gmsh::model::mesh::getElementFaceNodes(m_elType[0], 3, m_elFNodeTags, -1);
     m_fNumPerEl = m_elFNodeTags.size() / (m_elNum*m_fNumNodes);
-    getUniqueFaceNodeTags(m_elFNodeTags, m_fNumNodes, m_fNodeTags);
+    getUniqueFaceNodeTags(m_elFNodeTags, m_fNodeTags);
 
 
     // We hereby create a single entity containing all the
@@ -172,18 +110,6 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     m_fNodeTags.clear();
     gmsh::model::mesh::getElementsByType(m_fType, m_fTags, m_fNodeTags, m_fEntity);
     m_fNum = m_fTags.size();
-
-    // Map the face 'tag' to the face 'ID':
-    // - face tag = unique integer associated to the face by Gmsh
-    // - face id = indice in 'm_f*' vector storage
-    // This hypothesis rely on fact that Gmsh could provide non-zero
-    // starting or non-continuous sequence of face tags.
-    // e.g. m_fTags = [23, 24, 25, 78, 79 ...] => m_fIds = [0, 1, 2, 3, 4]
-    for(int fId=0; fId<m_fNum; ++fId) {
-        if(m_fIds.size() <= m_fTags[fId])
-            m_fIds.resize(m_fTags[fId]);
-        m_fIds.insert(m_fIds.begin()+m_fTags[fId],fId);
-    }
 
     // A priori the same integration type and order is applied
     // to the surface and to the volume integrals.
@@ -218,7 +144,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     assert(m_elFNodeTags.size() == m_elNum*m_fNumPerEl*m_fNumNodes);
     assert(m_fJacobianDets.size() == m_fNum*m_fNumIntPts);
     assert(m_fBasisFcts.size() == m_fNumNodes*m_fNumIntPts);
-    assert(m_fNormals.size() == m_fNum*m_fNumPerEl);
+    assert(m_fNormals.size() == m_Dim*m_fNum);
 
     gmsh::logger::write("------------------------------------------------");
     gmsh::logger::write("Number of Faces : " + std::to_string(m_fNum));
@@ -293,29 +219,6 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
             m_fIsBoundary.push_back(false);
     }
     assert(m_fIsBoundary.size() == m_fNum);
-
-
-        //auto it_duplicate = std::search(it+fNumPerEl, fNodeTags.end(), it, it+fNumPerEl);
-    /*print(m_fTags, 1, true);
-    std::cout << "------------------------" << std::endl;
-    print(m_fNodeTags, m_fNumNodes, true);
-    std::cout << "------------------------" << std::endl;
-    print(m_elFNodeTags, m_fNumNodes*m_fNumPerEl, true);
-    std::cout << "------------------------" << std::endl;
-    print(m_elFIds, m_fNumPerEl, true);*/
-
-    /*std::vector<double> u(m_elNum*m_elNumNodes,1);
-    std::vector<double> a = {1, 0, 0};
-    std::vector<double> F(3);
-    precomputeMassMatrix();
-    precomputeFlux(a.data(), u.data());
-    print(m_elNodeTags, m_elNumNodes, true);
-    for(int el=0; el<m_elNum; ++el){
-        getElFlux(el, F.data());
-        print(F, 1, true);
-        std::cout << "------------------------" << std::endl;
-    }*/
-
 }
 
 // Precompute and store the mass matris for all elements in m_elMassMatrix
@@ -381,9 +284,10 @@ void Mesh::getFlux(const int f, double* a, double * u, double* F) {
             F[n] = 0;
             std::fill(FIntPts.begin(), FIntPts.end(), 0);
             for(int g=0; g<m_fNumIntPts; ++g) {
-                for(int i=0; i<m_fNumNodes; i++)
+                for(int i=0; i<m_fNumNodes; i++) {
                     FIntPts[g] += dot*fBasisFct(g, i)*(u[fNbrElId(f, 0)*m_elNumNodes+fNToElNId(f, i, 0)]+
                                                        u[fNbrElId(f, 1)*m_elNumNodes+fNToElNId(f, i, 1)])/2.;
+                }
                 F[n] += fWeight(g)*fBasisFct(g, n)*FIntPts[g]*fJacobianDet(f, g);
             }
         }
@@ -413,6 +317,34 @@ void Mesh::getElFlux(const int el, double* F) {
     }
 }
 
+// Return the list of nodes for each unique face given a list of node per face and per elements
+// elFNodeTags : nodes for each face of each element
+//               [e1f1n1, e1f1n2, ... , e1f2n1, ..., e2f1n1, ....]
+// fNodeTags : nodes for each unique face
+//             [f1n1, f1n2, ... , f2n1, f2n2, ....]
+void Mesh::getUniqueFaceNodeTags(std::vector<int> &elFNodeTags, std::vector<int> &fNodeTags) {
+
+    // Sort nodes on each faces
+    for(int i=0; i<elFNodeTags.size(); i+=m_fNumNodes)
+        std::sort(elFNodeTags.begin()+i, elFNodeTags.begin()+(i+m_fNumNodes));
+
+    fNodeTags = elFNodeTags;
+
+    // Remove identical faces
+    std::vector<int>::iterator it_d;
+    for(std::vector<int>::iterator it = fNodeTags.begin(); it != fNodeTags.end();) {
+
+        for(it_d=it+m_fNumNodes; it_d != fNodeTags.end(); it_d+=m_fNumNodes) {
+            if(std::equal(it, it+m_fNumNodes, it_d))
+                break;
+        }
+
+        if(it_d != fNodeTags.end())
+            fNodeTags.erase(it_d, it_d+m_fNumNodes);
+        else
+            it+=m_fNumNodes;
+    }
+}
 
 // Small code to vizualize the normals.
 /*std::vector<double> viewNormals;

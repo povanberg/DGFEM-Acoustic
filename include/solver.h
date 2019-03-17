@@ -6,7 +6,7 @@
 
 namespace solver {
 
-    void solveForwardEuler(Mesh &mesh, const Config config);
+    void solveForwardEuler(Mesh &mesh, Config config);
 }
 
 #endif

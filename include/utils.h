@@ -22,6 +22,9 @@ namespace lapack {
     // Dot product between 2 vectors
     double dot(double *A, double *b, int N);
 
+    // Matrix/vector product:  y := alpha*A*x + y
+    void linEq(double *A, double *X, double *Y, double &alpha, int &N);
+
     double minus(double *A, double *B, int N);
 
     double plus(double *A, double *B, int N);

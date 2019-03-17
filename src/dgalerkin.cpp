@@ -32,7 +32,6 @@ int main(int argc, char **argv)
 
     solver::solveForwardEuler(mesh, config);
 
-
     //gmsh::fltk::run();
     gmsh::finalize();
 

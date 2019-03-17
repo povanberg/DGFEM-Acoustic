@@ -8,6 +8,7 @@ struct Config {
     double timeStart = 0;
     double timeEnd =  1;
     double timeStep = 0.1;
+    double timeRate = 0.1;
 
     // Specify the numerical flux
     std::string flux = "average";

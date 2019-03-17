@@ -32,6 +32,7 @@ namespace config{
             config.timeStart = std::stod(configMap["timeStart"]);
             config.timeEnd = std::stod(configMap["timeEnd"]);
             config.timeStep = std::stod(configMap["timeStep"]);
+            config.timeRate = std::stod(configMap["timeRate"]);
             config.flux = configMap["flux"];
             config.elementType = configMap["elementType"];
             config.timeIntMethod = configMap["timeIntMethod"];

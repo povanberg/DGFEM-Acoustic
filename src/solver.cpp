@@ -7,10 +7,6 @@
 
 namespace solver {
 
-    // LAPack
-    extern "C" void dgemv_(char& TRANS, int& M, int& N, double& a, double* A,
-                           int& LDA, double* X, int& INCX, double& beta, double* Y, int& INCY);
-
     // Initial confiditon
     double f(std::vector<double> x) {
         //return (1) * exp(-((x[0] + 3.2) * (x[0] + 3.2))/(0.5));

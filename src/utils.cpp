@@ -79,11 +79,15 @@ namespace lapack {
     }
 
     double minus(double *A, double *B, int N) {
-        std::transform(A, A + N, B, A, std::minus<double>());
+        for(int i=0; i<N; ++i)
+            A[i] -= B[i];
+        //std::transform(A, A + N, B, A, std::minus<double>());
     }
 
     double plus(double *A, double *B, int N) {
-        std::transform(A, A + N, B, A, std::plus<double>());
+        for(int i=0; i<N; ++i)
+            A[i] += B[i];
+        //std::transform(A, A + N, B, A, std::plus<double>());
     }
 }
 

@@ -25,9 +25,9 @@ namespace lapack {
     // Matrix/vector product:  y := alpha*A*x + y
     void linEq(double *A, double *X, double *Y, double &alpha, int &N);
 
-    double minus(double *A, double *B, int N);
+    void minus(double *A, double *B, int N);
 
-    double plus(double *A, double *B, int N);
+    void plus(double *A, double *B, int N);
 }
 
 namespace eigen {

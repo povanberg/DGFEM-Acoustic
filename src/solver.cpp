@@ -51,7 +51,7 @@ namespace solver {
             u = u_prev;
 
             // Savings
-            if(step==0 || tDisplay>=0.05){
+            if(step==0 || tDisplay>=config.timeRate){
                 tDisplay = 0;
                 for (int i = 0; i < nodeTags.size(); ++i)
                     solution[i][0] = u[i];

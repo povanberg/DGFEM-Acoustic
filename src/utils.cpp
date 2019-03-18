@@ -78,13 +78,13 @@ namespace lapack {
         return ddot_(&N, A, &INCX, B, &INCX);
     }
 
-    double minus(double *A, double *B, int N) {
+    void minus(double *A, double *B, int N) {
         for(int i=0; i<N; ++i)
             A[i] -= B[i];
         //std::transform(A, A + N, B, A, std::minus<double>());
     }
 
-    double plus(double *A, double *B, int N) {
+    void plus(double *A, double *B, int N) {
         for(int i=0; i<N; ++i)
             A[i] += B[i];
         //std::transform(A, A + N, B, A, std::plus<double>());

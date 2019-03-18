@@ -27,13 +27,16 @@ set GMSHSDK=C:\local\gmsh-4.1.4-Windows64-sdk
 
 :: where is gmsh.exe and gmsh-**.dll ? (HINT: copy gmsh-**.dll to the bin folder)
 set PATH=%GMSHSDK%\bin;%PATH%
+set PATH=C:\local\bin;%PATH%
 
 :: where is gmsh.h ? (rename gmsh.h_cwrap => gmsh.h)
 set INCLUDE=%GMSHSDK%\include;%INCLUDE%
 set INCLUDE=C:\Eigen;%INCLUDE%
+set INCLUDE=C:\local\include;%INCLUDE%
 
 :: where is gmsh.lib ?
 set LIB=%GMSHSDK%\lib;%LIB%
+set LIB=C:\local\lib;%LIB%
 
 :: where is gmsh.py ? (required only if you want to use the python API)
 set PYTHONPATH=%GMSHSDK%\lib;%PYTHONPATH%

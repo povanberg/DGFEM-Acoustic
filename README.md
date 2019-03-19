@@ -9,5 +9,5 @@ First simulation with average flux and time step of 0.0001. Elements order 3.
 
 ## 2D simulation
 
-![Alt Text](https://github.com/pvanberg/MATH0471-DG/blob/lapack/assets/sim2D.gif)
+![Alt Text](https://github.com/pvanberg/MATH0471-DG/blob/master/assets/sim2D.gif)
 

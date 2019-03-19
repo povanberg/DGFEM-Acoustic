@@ -6,3 +6,8 @@ This project consists in studying a hyperbolic system of equations in its conser
 First simulation with average flux and time step of 0.0001. Elements order 3.
 
 ![Alt Text](https://github.com/pvanberg/MATH0471-DG/blob/lapack/assets/gaussian_1d_avgflux.gif)
+
+## 2D simulation
+
+![Alt Text](https://github.com/pvanberg/MATH0471-DG/blob/lapack/assets/52482240_1264749367020778_1727882759273185280_n.gif)
+

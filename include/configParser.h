@@ -12,6 +12,7 @@ struct Config {
 
     // Specify the numerical flux
     std::string flux = "average";
+    double fluxCoeff=1;
 
     // Element Type:
     std::string elementType = "Lagrange";

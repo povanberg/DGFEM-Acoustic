@@ -4,8 +4,6 @@
 #include <iostream>
 #include <chrono>
 #include <algorithm>
-#include <Eigen/Dense>
-#include <Eigen/Sparse>
 
 #include "configParser.h"
 #include "Mesh.h"
@@ -27,7 +25,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     // Gauss quadrature performs exact integration of
     // polynomials of order n with p=2n-1 integration points.
     m_elNum = m_elTags.size();
-    m_elIntType = "Gauss" + std::to_string(m_elOrder+3);
+    m_elIntType = "Gauss" + std::to_string(4);
     gmsh::model::mesh::getJacobians(m_elType[0], m_elIntType, m_elJacobians,
                                     m_elJacobianDets, m_elIntPtCoords);
     m_elNumIntPts = (int) m_elJacobianDets.size() / m_elNum;
@@ -279,15 +277,19 @@ void Mesh::getFlux(const int f, double* a, double * u, double* F) {
         // Some precomputation
         double dot = lapack::dot(&fNormal(f), a, m_Dim);
         std::vector<double> FIntPts(m_fNumIntPts, 0);
+        // Get Flux at gauss points
+        for(int g=0; g<m_fNumIntPts; ++g) {
+            for (int i = 0; i < m_fNumNodes; i++) {
+                // Lax-friedrich flux
+                FIntPts[g] += dot * fBasisFct(g, i) *
+                              ((2-m_numFluxCoeff)*u[fNbrElId(f, 0) * m_elNumNodes + fNToElNId(f, i, 0)] +
+                                  m_numFluxCoeff* u[fNbrElId(f, 1) * m_elNumNodes + fNToElNId(f, i, 1)]) / 2.;
+            }
+        }
         // Surface integral
         for(int n=0; n<m_fNumNodes; ++n) {
             F[n] = 0;
-            std::fill(FIntPts.begin(), FIntPts.end(), 0);
             for(int g=0; g<m_fNumIntPts; ++g) {
-                for(int i=0; i<m_fNumNodes; i++) {
-                    FIntPts[g] += dot*fBasisFct(g, i)*(u[fNbrElId(f, 0)*m_elNumNodes+fNToElNId(f, i, 0)]+
-                                                       u[fNbrElId(f, 1)*m_elNumNodes+fNToElNId(f, i, 1)])/2.;
-                }
                 F[n] += fWeight(g)*fBasisFct(g, n)*FIntPts[g]*fJacobianDet(f, g);
             }
         }
@@ -317,6 +319,39 @@ void Mesh::getElFlux(const int el, double* F) {
     }
 }
 
+// Set numerical flux type and execute required precomputation
+void Mesh::setNumFlux(std::string fluxType, double *a, double fluxCoeff) {
+
+    m_numFluxType = fluxType;
+    if(m_numFluxType == "average")
+        m_numFluxCoeff = 1;
+    else if(m_numFluxType == "upwind")
+        m_numFluxCoeff = 0;
+    else
+        m_numFluxCoeff = fluxCoeff;
+
+    // Classify correctly neighbor elements
+    // with respect to the flux direction.
+    // NbrEl 0 : upstream
+    // NbrEl 1 : downstream
+    int elf;
+    for(int f=0; f<m_fNum; ++f) {
+        for(int lf=0; lf<m_fNumPerEl; ++lf){
+            if(elFId(fNbrElId(f, 0), lf) == f)
+                elf = lf;
+        }
+        if(!m_fIsBoundary[f]) {
+            // If order is not already correct
+            if(elFOrientation(fNbrElId(f, 0), elf)*lapack::dot(a, &fNormal(f), m_Dim) <= 0) {
+                std::swap(m_fNbrElIds[f][0], m_fNbrElIds[f][1]);
+                for(int nf=0; nf<m_fNumPerEl; ++nf)
+                    std::swap(fNToElNId(f, nf, 0), fNToElNId(f, nf, 1));
+            }
+        }
+    }
+}
+
+
 // Return the list of nodes for each unique face given a list of node per face and per elements
 // elFNodeTags : nodes for each face of each element
 //               [e1f1n1, e1f1n2, ... , e1f2n1, ..., e2f1n1, ....]
@@ -345,19 +380,3 @@ void Mesh::getUniqueFaceNodeTags(std::vector<int> &elFNodeTags, std::vector<int>
             it+=m_fNumNodes;
     }
 }
-
-// Small code to vizualize the normals.
-/*std::vector<double> viewNormals;
-for(int f=0; f<m_fNum; f++) {
-std::vector<double> fNodeCoord, fNodeCoord2, paramCoords;
-gmsh::model::mesh::getNode(fNodeTag(f), fNodeCoord, paramCoords);
-gmsh::model::mesh::getNode(fNodeTag(f, 1), fNodeCoord2, paramCoords);
-for(int x=0; x<3; ++x)
-viewNormals.push_back((fNodeCoord[x]+fNodeCoord2[x])/2);
-for(int x=0; x<3; ++x)
-viewNormals.push_back(fNormal(f, x));
-}
-int normalTag;
-gmsh::view::add("normals", normalTag);
-gmsh::view::addListData(normalTag, "VP", m_elNum, viewNormals);
-gmsh::view::write(normalTag, "normal.pos");*/

@@ -102,7 +102,7 @@ public:
     inline int &fNToElNId(int f, int nf=0, int el=0) {
         return m_fNToElNIds[f][nf*m_fNbrElIds[f].size() + el];
     }
-    // Getter (el, f) -> orienation of the face 'f' for element 'el'
+    // Getter (el, f) -> orientation of the face 'f' for element 'el'
     inline int &elFOrientation( int el, int f) {
         return m_elFOrientation[el*m_fNumPerEl+f];
     }
@@ -142,6 +142,8 @@ public:
     // fNodeTags : nodes for each unique face
     //             [f1n1, f1n2, ... , f2n1, f2n2, ....]
     void getUniqueFaceNodeTags(std::vector<int> &elFNodeTags, std::vector<int> &fNodeTags);
+    // Set and retrieve the element upstream
+    void setNumFlux(std::string fluxType, double *a, double fluxCoeff=0.0);
 
 private:
     std::string name;
@@ -273,6 +275,14 @@ private:
     // Flux through all faces
     // [f1n1, f1n2, ..., f2n1, f2n2, ...]
     std::vector<double> m_fFlux;
+
+    // Numeric flux type
+    std::string m_numFluxType;
+    // Numeric flux coefficient
+    // Lax-Friedrich: (u- + u+)/2 + |c|(1-c)/2(u+ - u-)
+    double m_numFluxCoeff;
+
+
 };
 
 #endif //DGALERKIN_MESH_H

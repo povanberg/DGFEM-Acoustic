@@ -10,7 +10,8 @@ namespace solver {
     // Initial confiditon
     double f(std::vector<double> x) {
         //return (1) * exp(-((x[0] + 3.2) * (x[0] + 3.2))/(0.5));
-        return (1) * exp(-((x[0] - 0) * (x[0] - 0) + (x[1]- 0) * (x[1]- 0))/0.5);
+        return (1) * exp(-((x[0] - 10) * (x[0] - 10) + (x[1]- 0) * (x[1]- 0))/0.5);
+        //return 1;
     }
 
     void solveForwardEuler(Mesh &mesh, Config config) {
@@ -36,10 +37,11 @@ namespace solver {
         }
 
         // Convection vector
-        std::vector<double> a = {3, 0, 0};
+        std::vector<double> a = {3, 3, 0};
 
         // The mass matrix is invariant along iteration
         mesh.precomputeMassMatrix();
+        mesh.setNumFlux(config.flux, a.data(), config.fluxCoeff);
 
         // Element variables
         double elFlux[mesh.getElNumNodes()];

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <Eigen/Dense>
+#include <iomanip>
 
 extern "C" {
     // LU decomoposition of a general matrix
@@ -63,11 +64,10 @@ namespace lapack {
         for(int i=0; i<N; i++){A[i] /= norm;};
     }
 
-    // Matrix/vector product:  y := alpha*A*x + y
-    void linEq(double *A, double *X, double *Y, double &alpha, int &N){
+    // Matrix/vector product:  y := alpha*A*x + beta*y
+    void linEq(double *A, double *X, double *Y, double &alpha, double beta, int &N){
         char TRANS = 'T';
         int INC = 1;
-        double beta=1;
         dgemv_(TRANS, N, N, alpha, A, N, X, INC, beta, Y, INC);
     }
 
@@ -78,11 +78,20 @@ namespace lapack {
     }
 
     void minus(double *A, double *B, int N) {
-        std::transform(A, A + N, B, A, std::minus<double>());
+        for(int i=0; i<N; ++i)
+            A[i] -= B[i];
+        //std::transform(A, A + N, B, A, std::minus<double>());
     }
 
     void plus(double *A, double *B, int N) {
-        std::transform(A, A + N, B, A, std::plus<double>());
+        for(int i=0; i<N; ++i)
+            A[i] += B[i];
+        //std::transform(A, A + N, B, A, std::plus<double>());
+    }
+
+    void plusTimes(double *A, double *B, double c, int N) {
+        for(int i=0; i<N; ++i)
+            A[i] += B[i]*c;
     }
 }
 
@@ -98,14 +107,33 @@ namespace eigen {
         B_eigen = A_eigen.lu().solve(B_eigen);
     }
 
-    void inverse(double *A, int &N) {
-        Eigen::Map<Eigen::MatrixXd> A_eigen(A, N, N);
-        Eigen::JacobiSVD<Eigen::MatrixXd> svd(A_eigen);
-        double cond = svd.singularValues()(0)
-                      / svd.singularValues()(svd.singularValues().size()-1);
-        std::cout << "cond " << cond << std::endl;
-        A_eigen = A_eigen.inverse();
-    }
-
 }
 
+namespace display {
+    template<typename Container>
+    void print(const Container& cont, int row = 1, bool colMajor=false) {
+
+        if(colMajor){
+            for(int rowIt=0; rowIt<row; ++rowIt){
+                int colIt = 0;
+                for (auto const& x : cont) {
+                    if(colIt%row == rowIt) {
+                        std::cout << std::setprecision(4) << std::left << std::setw(10) << x << " ";
+                    }
+                    colIt++;
+                }
+                std::cout << std::endl;
+            }
+        }
+        else {
+            int colIt = 0;
+            for (auto const& x : cont) {
+                std::cout << std::setprecision(4) << std::left << std::setw(10) << x << " ";
+                colIt++;
+                if(colIt%row == 0)
+                    std::cout << std::endl;
+            }
+        }
+
+    }
+}

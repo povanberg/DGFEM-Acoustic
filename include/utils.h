@@ -23,11 +23,13 @@ namespace lapack {
     double dot(double *A, double *b, int N);
 
     // Matrix/vector product:  y := alpha*A*x + y
-    void linEq(double *A, double *X, double *Y, double &alpha, int &N);
+    void linEq(double *A, double *X, double *Y, double &alpha,  double beta, int &N);
 
     void minus(double *A, double *B, int N);
 
     void plus(double *A, double *B, int N);
+
+    void plusTimes(double *A, double *B, double c, int N);
 }
 
 namespace eigen {

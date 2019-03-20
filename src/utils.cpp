@@ -64,11 +64,10 @@ namespace lapack {
         for(int i=0; i<N; i++){A[i] /= norm;};
     }
 
-    // Matrix/vector product:  y := alpha*A*x + y
-    void linEq(double *A, double *X, double *Y, double &alpha, int &N){
+    // Matrix/vector product:  y := alpha*A*x + beta*y
+    void linEq(double *A, double *X, double *Y, double &alpha, double beta, int &N){
         char TRANS = 'T';
         int INC = 1;
-        double beta=1;
         dgemv_(TRANS, N, N, alpha, A, N, X, INC, beta, Y, INC);
     }
 
@@ -88,6 +87,11 @@ namespace lapack {
         for(int i=0; i<N; ++i)
             A[i] += B[i];
         //std::transform(A, A + N, B, A, std::plus<double>());
+    }
+
+    void plusTimes(double *A, double *B, double c, int N) {
+        for(int i=0; i<N; ++i)
+            A[i] += B[i]*c;
     }
 }
 

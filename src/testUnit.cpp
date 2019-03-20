@@ -186,21 +186,4 @@ int main(int argc, char **argv) {
     gmsh::finalize();
 
     return EXIT_SUCCESS;
-
-    // Small code to vizualize the normals.
-    /*std::vector<double> viewNormals;
-    for(int f=0; f<m_fNum; f++) {
-    std::vector<double> fNodeCoord, fNodeCoord2, paramCoords;
-    gmsh::model::mesh::getNode(fNodeTag(f), fNodeCoord, paramCoords);
-    gmsh::model::mesh::getNode(fNodeTag(f, 1), fNodeCoord2, paramCoords);
-    for(int x=0; x<3; ++x)
-    viewNormals.push_back((fNodeCoord[x]+fNodeCoord2[x])/2);
-    for(int x=0; x<3; ++x)
-    viewNormals.push_back(fNormal(f, x));
-    }
-    int normalTag;
-    gmsh::view::add("normals", normalTag);
-    gmsh::view::addListData(normalTag, "VP", m_elNum, viewNormals);
-    gmsh::view::write(normalTag, "normal.pos");*/
-
 }

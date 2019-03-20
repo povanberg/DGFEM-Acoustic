@@ -34,7 +34,6 @@ namespace config{
             config.timeStep = std::stod(configMap["timeStep"]);
             config.timeRate = std::stod(configMap["timeRate"]);
             config.flux = configMap["flux"];
-            config.fluxCoeff = std::stod(configMap["fluxCoeff"]);
             config.elementType = configMap["elementType"];
             config.timeIntMethod = configMap["timeIntMethod"];
             config.saveFile = configMap["saveFile"];

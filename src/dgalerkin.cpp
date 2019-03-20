@@ -30,7 +30,10 @@ int main(int argc, char **argv)
     // Discontinuous Galerkin simulation.
     Mesh mesh(msh_name, config);
 
-    solver::solveForwardEuler(mesh, config);
+    //solver::solveForwardEuler(mesh, config);
+    solver::solveRungeKutta(mesh, config);
+
+    //mesh.getFlux(const int f, double* a, double* u, double* F);
 
     //gmsh::fltk::run();
     gmsh::finalize();

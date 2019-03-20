@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <string>
 #include <map>
+#include <gmsh.h>
 
 #include "configParser.h"
 
@@ -38,6 +39,27 @@ namespace config{
             config.elementType = configMap["elementType"];
             config.timeIntMethod = configMap["timeIntMethod"];
             config.saveFile = configMap["saveFile"];
+
+            // Config physical group must match gmsh physical group
+            std::string physName;
+            gmsh::vectorpair m_physicalDimTags;
+            gmsh::model::getPhysicalGroups(m_physicalDimTags);
+            for(int p=0; p<m_physicalDimTags.size(); ++p) {
+                gmsh::model::getPhysicalName(m_physicalDimTags[p].first, m_physicalDimTags[p].second, physName);
+                if(configMap[physName].find("Dirichelet") == 0) {
+                    int valueBC = std::stod(configMap[physName].substr(10));
+                    config.physBCs[m_physicalDimTags[p].second] = std::make_pair("Dirichelet", valueBC);
+                }
+                else if (configMap[physName].find("Neumann") == 0) {
+                    int valueBC = std::stod(configMap[physName].substr(7));
+                    config.physBCs[m_physicalDimTags[p].second] = std::make_pair("Neumann", valueBC);
+                }
+                else {
+                    gmsh::logger::write("Not supported boundary conditions. Dirichelet 0 applied.");
+                    config.physBCs[m_physicalDimTags[p].second] = std::make_pair("Dirichelet", 0);
+                }
+
+            }
         }
         else {
             throw;

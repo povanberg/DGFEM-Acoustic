@@ -13,6 +13,7 @@ int main(int argc, char **argv)
     // 1: the Mesh file (.msh)
     // 2: the config file (see, configParser.cpp)
     // e.g. ./dgarlerkin mymesh.msh myconfig.conf
+    // ------------------------------------------
     if(argc!=3){ return E2BIG; }
     std::string msh_name = argv[1];
     std::string config_name = argv[2];

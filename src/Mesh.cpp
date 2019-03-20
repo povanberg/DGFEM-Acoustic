@@ -25,7 +25,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     // Gauss quadrature performs exact integration of
     // polynomials of order n with p=2n-1 integration points.
     m_elNum = m_elTags.size();
-    m_elIntType = "Gauss" + std::to_string(4);
+    m_elIntType = "Gauss" + std::to_string(2*m_elOrder);
     gmsh::model::mesh::getJacobians(m_elType[0], m_elIntType, m_elJacobians,
                                     m_elJacobianDets, m_elIntPtCoords);
     m_elNumIntPts = (int) m_elJacobianDets.size() / m_elNum;
@@ -209,14 +209,66 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     }
     assert(m_elFOrientation.size() == m_elNum*m_fNumPerEl);
 
-    // Check if a face is a boundary or not.
+    gmsh::logger::write("Element-Face connectivity sucessfully done.");
+
+    //---------------------------------------------------------------------
+    // Boundary conditions
+    //---------------------------------------------------------------------
+
+    // Check if a face is a boundary or not and orientate
+    // the normal at boundaries in the outward direction.
+    // This convention is particularly usefull for BCs.
     for(int f=0; f<m_fNum; ++f){
-        if(m_fNbrElIds[f].size()<2)
+        if(m_fNbrElIds[f].size()<2) {
             m_fIsBoundary.push_back(true);
-        else
+            for(int lf=0; lf<m_fNumPerEl; ++lf) {
+                if(elFId(fNbrElId(f, 0), lf) == f){
+                    fNormal(f, 0) *= elFOrientation(fNbrElId(f, 0), lf);
+                    fNormal(f, 1) *= elFOrientation(fNbrElId(f, 0), lf);
+                    fNormal(f, 2) *= elFOrientation(fNbrElId(f, 0), lf);
+                }
+            }
+        }
+        else {
             m_fIsBoundary.push_back(false);
+        }
     }
     assert(m_fIsBoundary.size() == m_fNum);
+
+    // Retrieve faces and nodes for boundary conditions
+    m_fBCs.resize(m_fNum);
+    std::vector<int> nodeTags;
+    std::vector<double> coord;
+    for (auto const& physBC : config.physBCs) {
+        auto physTag = physBC.first;
+        auto BCtype = physBC.second.first;
+        auto BCvalue = physBC.second.second;
+        gmsh::model::mesh::getNodesForPhysicalGroup(m_fDim, physTag, nodeTags, coord);
+        if(BCtype == "Dirichelet"){
+            // Nodes
+            for(int n=0; n<nodeTags.size(); ++n) {
+                for(int el=0; el<m_elNum; ++el) {
+                    for(int nel=0; nel<m_elNumNodes; ++nel) {
+                        if(nodeTags[n] == elNodeTag(el, nel))
+                            m_elNodeDirichelet.push_back(std::make_pair(el*m_elNumNodes+nel, BCvalue));
+                    }
+                }
+            }
+            // Face
+            for(int f=0; f<m_fNum; ++f) {
+                if(m_fIsBoundary[f] && std::find(nodeTags.begin(), nodeTags.end(), fNodeTag(f)) != nodeTags.end())
+                    m_fBCs[f] = std::make_pair(1, BCvalue);
+            }
+        }
+        else if(BCtype == "Neumann") {
+            for(int f=0; f<m_fNum; ++f) {
+                if(m_fIsBoundary[f] && std::find(nodeTags.begin(), nodeTags.end(), fNodeTag(f)) != nodeTags.end())
+                    m_fBCs[f] = std::make_pair(2, BCvalue);
+            }
+        }
+    }
+
+    gmsh::logger::write("Boundary conditions sucessfuly loaded.");
 }
 
 // Precompute and store the mass matris for all elements in m_elMassMatrix
@@ -233,7 +285,7 @@ void Mesh::precomputeMassMatrix() {
 //                output the mass matrix. (row major)
 void Mesh::getElMassMatrix(const int el, const bool inverse, double *elMassMatrix) {
     for(int i=0; i<m_elNumNodes; ++i) {
-        for (int j = 0; j < m_elNumNodes; ++j) {
+        for (int j=0; j<m_elNumNodes; ++j) {
             elMassMatrix[i*m_elNumNodes+j] = 0.0;
             for(int g=0; g<m_elNumIntPts; g++) {
                 elMassMatrix[i*m_elNumNodes+j] += elBasisFct(g,i)*elBasisFct(g,j)*
@@ -269,9 +321,28 @@ void Mesh::getElStiffVector(const int el, double* a, double* u, double *elStiffV
 // u : global solution
 // F : at the end return the flux at face node
 void Mesh::getFlux(const int f, double* a, double * u, double* F) {
-    if(m_fNbrElIds[f].size()<2) {
-        for(int n=0; n<m_fNumNodes; ++n)
-            F[n] = 0;
+    if(m_fIsBoundary[f]) {
+        // Dirichelet
+        if(m_fBCs[f].first == 1) {
+            double dot = lapack::dot(&fNormal(f), a, m_Dim);
+            std::vector<double> FIntPts(m_fNumIntPts, 0);
+            for(int g=0; g<m_fNumIntPts; ++g) {
+                for (int i = 0; i < m_fNumNodes; i++) {
+                    FIntPts[g] += dot * fBasisFct(g, i) *u[fNbrElId(f, 0) * m_elNumNodes + fNToElNId(f, i, 0)];
+                }
+            }
+            for(int n=0; n<m_fNumNodes; ++n) {
+                F[n] = 0;
+                for(int g=0; g<m_fNumIntPts; ++g) {
+                    F[n] += fWeight(g)*fBasisFct(g, n)*FIntPts[g]*fJacobianDet(f, g);
+                }
+            }
+        }
+        // Neumann
+        else if(m_fBCs[f].first == 2) {
+            for(int n=0; n<m_fNumNodes; ++n)
+                F[n] = m_fBCs[f].second;
+        }
     }
     else {
         // Some precomputation
@@ -351,6 +422,10 @@ void Mesh::setNumFlux(std::string fluxType, double *a, double fluxCoeff) {
     }
 }
 
+void Mesh::enforceDiricheletBCs(double* u) {
+    for(int n=0; n<m_elNodeDirichelet.size(); ++n)
+        u[m_elNodeDirichelet[n].first] = m_elNodeDirichelet[n].second;
+};
 
 // Return the list of nodes for each unique face given a list of node per face and per elements
 // elFNodeTags : nodes for each face of each element

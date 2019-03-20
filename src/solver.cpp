@@ -20,7 +20,7 @@ namespace solver {
         int N = mesh.getElNumNodes();
         std::vector<int> nodeTags(&mesh.elNodeTag(0), &mesh.elNodeTag(0) + mesh.getNumNodes());
         std::vector<double> u(mesh.getNumNodes());
-        std::vector<double> u_prev(mesh.getNumNodes());
+        std::vector<double> u_next(mesh.getNumNodes());
 
         // Save results initialization
         int viewTag = gmsh::view::add("Results");
@@ -33,11 +33,11 @@ namespace solver {
         std::vector<double> parametricCoord;
         for(int n=0; n<mesh.getNumNodes(); n++) {
             gmsh::model::mesh::getNode(nodeTags[n], coord, parametricCoord);
-            u_prev[n] = f(coord);
+            u_next[n] = f(coord);
         }
 
         // Convection vector
-        std::vector<double> a = {3, 3, 0};
+        std::vector<double> a = {3, 0, 0};
 
         // The mass matrix is invariant along iteration
         mesh.precomputeMassMatrix();
@@ -50,7 +50,10 @@ namespace solver {
         int step = 0;
         for(double t=config.timeStart, tDisplay =0; t<config.timeEnd; t+=config.timeStep, tDisplay+=config.timeStep, ++step) {
 
-            u = u_prev;
+            // Note that Neumann BCs are directly incorporated in flux calculation
+            mesh.enforceDiricheletBCs(u_next.data());
+
+            u = u_next;
 
             // Savings
             if(step==0 || tDisplay>=config.timeRate){
@@ -63,15 +66,18 @@ namespace solver {
             }
 
             mesh.precomputeFlux(a.data(), u.data());
+
             for(int el=0; el<mesh.getElNum(); ++el) {
 
                 mesh.getElFlux(el, elFlux);
                 mesh.getElStiffVector(el, a.data(), u.data(), elStiffvector);
 
-                lapack::minus(elStiffvector, elFlux, N);
-                lapack::linEq(&mesh.elMassMatrix(el), &elStiffvector[0], &u_prev[el*N], config.timeStep, N);
-            }
+                //display::print(std::vector<double>(&mesh.elMassMatrix(el),&mesh.elMassMatrix(el)+N*N), N, true);
+                //std::cout << "----" << std::endl;
 
+                lapack::minus(elStiffvector, elFlux, N);
+                lapack::linEq(&mesh.elMassMatrix(el), &elStiffvector[0], &u_next[el*N], config.timeStep, N);
+            }
         }
 
         gmsh::view::write(viewTag, "data.msh");

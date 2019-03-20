@@ -1,6 +1,9 @@
 #ifndef DGALERKIN_UTILS_H
 #define DGALERKIN_UTILS_H
 
+#include <iomanip>
+#include <iostream>
+
 namespace lapack {
     // Compute the inverse of a square matrix A of size N*N.
     // Input can either be a array or a vector. Since c++11
@@ -36,6 +39,37 @@ namespace eigen {
     // where A is an N-by-N matrix and X and B are N-by-NRHS matrices.
     // On exit, the solution X is stored in B.
     void solve(double *A, double *B, int &N);
+
+    void inverse(double *A, int &N);
+}
+
+namespace display {
+    template<typename Container>
+    void print(const Container& cont, int row = 1, bool colMajor=false) {
+
+        if(colMajor){
+            for(int rowIt=0; rowIt<row; ++rowIt){
+                int colIt = 0;
+                for (auto const& x : cont) {
+                    if(colIt%row == rowIt) {
+                        std::cout << std::setprecision(4) << std::left << std::setw(10) << x << " ";
+                    }
+                    colIt++;
+                }
+                std::cout << std::endl;
+            }
+        }
+        else {
+            int colIt = 0;
+            for (auto const& x : cont) {
+                std::cout << std::setprecision(4) << std::left << std::setw(10) << x << " ";
+                colIt++;
+                if(colIt%row == 0)
+                    std::cout << std::endl;
+            }
+        }
+
+    }
 }
 
 #endif //DGALERKIN_UTILS_H

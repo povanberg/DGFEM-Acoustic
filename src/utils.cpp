@@ -1,7 +1,6 @@
 #include <iostream>
 #include <iomanip>
 #include <Eigen/Dense>
-#include <iomanip>
 
 extern "C" {
     // LU decomoposition of a general matrix
@@ -79,15 +78,11 @@ namespace lapack {
     }
 
     void minus(double *A, double *B, int N) {
-        for(int i=0; i<N; ++i)
-            A[i] -= B[i];
-        //std::transform(A, A + N, B, A, std::minus<double>());
+        std::transform(A, A + N, B, A, std::minus<double>());
     }
 
     void plus(double *A, double *B, int N) {
-        for(int i=0; i<N; ++i)
-            A[i] += B[i];
-        //std::transform(A, A + N, B, A, std::plus<double>());
+        std::transform(A, A + N, B, A, std::plus<double>());
     }
 }
 
@@ -103,33 +98,14 @@ namespace eigen {
         B_eigen = A_eigen.lu().solve(B_eigen);
     }
 
-}
-
-namespace display {
-    template<typename Container>
-    void print(const Container& cont, int row = 1, bool colMajor=false) {
-
-        if(colMajor){
-            for(int rowIt=0; rowIt<row; ++rowIt){
-                int colIt = 0;
-                for (auto const& x : cont) {
-                    if(colIt%row == rowIt) {
-                        std::cout << std::setprecision(4) << std::left << std::setw(10) << x << " ";
-                    }
-                    colIt++;
-                }
-                std::cout << std::endl;
-            }
-        }
-        else {
-            int colIt = 0;
-            for (auto const& x : cont) {
-                std::cout << std::setprecision(4) << std::left << std::setw(10) << x << " ";
-                colIt++;
-                if(colIt%row == 0)
-                    std::cout << std::endl;
-            }
-        }
-
+    void inverse(double *A, int &N) {
+        Eigen::Map<Eigen::MatrixXd> A_eigen(A, N, N);
+        Eigen::JacobiSVD<Eigen::MatrixXd> svd(A_eigen);
+        double cond = svd.singularValues()(0)
+                      / svd.singularValues()(svd.singularValues().size()-1);
+        std::cout << "cond " << cond << std::endl;
+        A_eigen = A_eigen.inverse();
     }
+
 }
+

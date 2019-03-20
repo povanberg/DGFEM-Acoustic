@@ -137,13 +137,12 @@ public:
     // Compute Numerical Flux through element 'el'
     void getElFlux(const int el, double* F);
     // Return the list of nodes for each unique face given a list of node per face and per elements
-    // elFNodeTags : nodes for each face of each element
-    //               [e1f1n1, e1f1n2, ... , e1f2n1, ..., e2f1n1, ....]
-    // fNodeTags : nodes for each unique face
-    //             [f1n1, f1n2, ... , f2n1, f2n2, ....]
     void getUniqueFaceNodeTags(std::vector<int> &elFNodeTags, std::vector<int> &fNodeTags);
     // Set and retrieve the element upstream
     void setNumFlux(std::string fluxType, double *a, double fluxCoeff=0.0);
+    // Enforce boundaries conditions
+    void enforceDiricheletBCs(double* u);
+
 
 private:
     std::string name;
@@ -282,6 +281,18 @@ private:
     // Lax-Friedrich: (u- + u+)/2 + |c|(1-c)/2(u+ - u-)
     double m_numFluxCoeff;
 
+    // Dirichelet boundary conditions
+    // int = node id in assembled solution vector
+    // double = value of dirichelet BCs
+    std::vector<std::pair<int, double>> m_elNodeDirichelet;
+    // Neumann & Dirichelet flux boundary conditions
+    // NB: Even if Dirichelet BCs doesn't not directly involve flux calculation
+    //     they need a particular treatment at the interfaces. For instance, upwind
+    //     flux may require out of domain values which are not defined. (ghost element not supported)
+    // [f1<1,0>, f2<2,0>, ...]
+    // int = boundary conditions type (1=Dirichelet, 2=Neumann)
+    // double = value of boundary condition
+    std::vector<std::pair<int, double>> m_fBCs;
 
 };
 

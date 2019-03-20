@@ -1,4 +1,5 @@
 #include <string>
+#include <map>
 
 #ifndef DGALERKIN_CONFIG_H
 #define DGALERKIN_CONFIG_H
@@ -19,6 +20,11 @@ struct Config {
 
     // Time integration method
     std::string timeIntMethod = "Euler1";
+
+    // Boundary condition
+    // key : physical group Tag
+    // value : tuple<BCType, BCValue>
+    std::map<int, std::pair<std::string, double>> physBCs;
 
     // Save file
     std::string saveFile = "results.msh";

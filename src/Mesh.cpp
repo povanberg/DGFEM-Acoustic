@@ -226,6 +226,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
                     fNormal(f, 0) *= elFOrientation(fNbrElId(f, 0), lf);
                     fNormal(f, 1) *= elFOrientation(fNbrElId(f, 0), lf);
                     fNormal(f, 2) *= elFOrientation(fNbrElId(f, 0), lf);
+                    elFOrientation(fNbrElId(f, 0), lf) = 1;
                 }
             }
         }

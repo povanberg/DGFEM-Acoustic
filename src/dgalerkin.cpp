@@ -31,12 +31,7 @@ int main(int argc, char **argv)
     // Discontinuous Galerkin simulation.
     Mesh mesh(msh_name, config);
 
-    if(config.timeIntMethod == "Euler1")
-        solver::solveForwardEuler(mesh, config);
-    else if(config.timeIntMethod == "Runge-Kutta")
-        solver::solveRungeKutta(mesh, config);
-    else
-        solver::solveForwardEuler(mesh, config);
+    solver::solveTimeIntegration(mesh, config);
 
     //gmsh::fltk::run();
     gmsh::finalize();

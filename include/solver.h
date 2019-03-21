@@ -5,9 +5,15 @@
 #define DGALERKIN_SOLVER_H
 
 namespace solver {
+    // Solve using forward explicit scheme. O(h)
+    // u : initial solution vector    |   mesh   : ...
+    // a : convection vector          |   config : ...
+    void forwardEuler(std::vector<double> &u, std::vector<double> &a, Mesh &mesh, Config config);
 
-    void dtfu(Mesh &mesh, Config config, std::vector<double> &u, std::vector<double> &a, double beta, int N);
-    void solveTimeIntegration(Mesh &mesh, Config config);
+    // Solve using explicit Runge-Kutta integration method. O(h^4)
+    // u : initial solution vector    |   mesh   : ...
+    // a : convection vector          |   config : ...
+    void rungeKutta(std::vector<double> &u, std::vector<double> &a, Mesh &mesh, Config config);
 }
 
 #endif

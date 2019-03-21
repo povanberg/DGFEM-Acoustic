@@ -55,10 +55,8 @@ namespace config{
                     config.physBCs[m_physicalDimTags[p].second] = std::make_pair("Neumann", valueBC);
                 }
                 else {
-                    gmsh::logger::write("Not supported boundary conditions. Dirichelet 0 applied.");
-                    config.physBCs[m_physicalDimTags[p].second] = std::make_pair("Dirichelet", 0);
+                    gmsh::logger::write("Not specified or supported boundary conditions.");
                 }
-
             }
         }
         else {

@@ -23,7 +23,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     gmsh::model::mesh::getElementsByType(m_elType[0], m_elTags, m_elNodeTags);
 
     // Gauss quadrature performs exact integration of
-    // polynomials of order n with p=2n-1 integration points.
+    // polynomials of order n with p=(n+1)/2 integration points.
     m_elNum = m_elTags.size();
     m_elIntType = "Gauss" + std::to_string(2*m_elOrder);
     gmsh::model::mesh::getJacobians(m_elType[0], m_elIntType, m_elJacobians,
@@ -97,8 +97,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     else
         gmsh::model::mesh::getElementFaceNodes(m_elType[0], 3, m_elFNodeTags, -1);
     m_fNumPerEl = m_elFNodeTags.size() / (m_elNum*m_fNumNodes);
-    getUniqueFaceNodeTags(m_elFNodeTags, m_fNodeTags);
-
+    getUniqueFaceNodeTags();
 
     // We hereby create a single entity containing all the
     // unique faces. We call Gmsh with empty face tags and
@@ -163,8 +162,8 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     for(int el=0; el<m_elNum; ++el) {
         for(int elF=0; elF<m_fNumPerEl; ++elF) {
             for(int f=0; f<m_fNum; ++f) {
-                if(std::equal(&fNodeTag(f), &fNodeTag(f)+m_fNumNodes,
-                              &elFNodeTag(el, elF))) {
+                if(std::equal(&fNodeTagOrdered(f), &fNodeTagOrdered(f)+m_fNumNodes,
+                              &elFNodeTagOrdered(el, elF))) {
                     m_elFIds.push_back(f);
                     m_fNbrElIds[f].push_back(el);
                 }
@@ -237,7 +236,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     assert(m_fIsBoundary.size() == m_fNum);
 
     // Retrieve faces and nodes for boundary conditions
-    m_fBCs.resize(m_fNum);
+    m_fNeumann.resize(m_fNum);
     std::vector<int> nodeTags;
     std::vector<double> coord;
     for (auto const& physBC : config.physBCs) {
@@ -246,7 +245,6 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
         auto BCvalue = physBC.second.second;
         gmsh::model::mesh::getNodesForPhysicalGroup(m_fDim, physTag, nodeTags, coord);
         if(BCtype == "Dirichelet"){
-            // Nodes
             for(int n=0; n<nodeTags.size(); ++n) {
                 for(int el=0; el<m_elNum; ++el) {
                     for(int nel=0; nel<m_elNumNodes; ++nel) {
@@ -255,16 +253,13 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
                     }
                 }
             }
-            // Face
-            for(int f=0; f<m_fNum; ++f) {
-                if(m_fIsBoundary[f] && std::find(nodeTags.begin(), nodeTags.end(), fNodeTag(f)) != nodeTags.end())
-                    m_fBCs[f] = std::make_pair(1, BCvalue);
-            }
         }
         else if(BCtype == "Neumann") {
             for(int f=0; f<m_fNum; ++f) {
                 if(m_fIsBoundary[f] && std::find(nodeTags.begin(), nodeTags.end(), fNodeTag(f)) != nodeTags.end())
-                    m_fBCs[f] = std::make_pair(2, BCvalue);
+                    m_fNeumann[f] = std::make_pair(true, BCvalue);
+                else
+                    m_fNeumann[f] = std::make_pair(false, 0);
             }
         }
     }
@@ -323,27 +318,8 @@ void Mesh::getElStiffVector(const int el, double* a, double* u, double *elStiffV
 // F : at the end return the flux at face node
 void Mesh::getFlux(const int f, double* a, double * u, double* F) {
     if(m_fIsBoundary[f]) {
-        // Dirichelet
-        if(m_fBCs[f].first == 1) {
-            double dot = lapack::dot(&fNormal(f), a, m_Dim);
-            std::vector<double> FIntPts(m_fNumIntPts, 0);
-            for(int g=0; g<m_fNumIntPts; ++g) {
-                for (int i = 0; i < m_fNumNodes; i++) {
-                    FIntPts[g] += dot * fBasisFct(g, i) *u[fNbrElId(f, 0) * m_elNumNodes + fNToElNId(f, i, 0)];
-                }
-            }
-            for(int n=0; n<m_fNumNodes; ++n) {
-                F[n] = 0;
-                for(int g=0; g<m_fNumIntPts; ++g) {
-                    F[n] += fWeight(g)*fBasisFct(g, n)*FIntPts[g]*fJacobianDet(f, g);
-                }
-            }
-        }
-        // Neumann
-        else if(m_fBCs[f].first == 2) {
-            for(int n=0; n<m_fNumNodes; ++n)
-                F[n] = m_fBCs[f].second;
-        }
+        if(m_fNeumann[f].first)
+            std::fill(F, F+m_fNumNodes, m_fNeumann[f].second);
     }
     else {
         // Some precomputation
@@ -351,7 +327,7 @@ void Mesh::getFlux(const int f, double* a, double * u, double* F) {
         std::vector<double> FIntPts(m_fNumIntPts, 0);
         // Get Flux at gauss points
         for(int g=0; g<m_fNumIntPts; ++g) {
-            for (int i = 0; i < m_fNumNodes; i++) {
+            for (int i = 0; i < m_fNumNodes; ++i) {
                 // Lax-friedrich flux
                 FIntPts[g] += dot * fBasisFct(g, i) *
                               ((2-m_numFluxCoeff)*u[fNbrElId(f, 0) * m_elNumNodes + fNToElNId(f, i, 0)] +
@@ -391,7 +367,9 @@ void Mesh::getElFlux(const int el, double* F) {
     }
 }
 
-// Set numerical flux type and execute required precomputation
+// Set numerical flux type and correpsonding coefficient in lax-friedrich formula.
+// Reclassify correctly neighbor elements with respect to the flux direction.
+// NbrEl 0 : upstream and NbrEl 1 : downstream
 void Mesh::setNumFlux(std::string fluxType, double *a, double fluxCoeff) {
 
     m_numFluxType = fluxType;
@@ -402,10 +380,6 @@ void Mesh::setNumFlux(std::string fluxType, double *a, double fluxCoeff) {
     else
         m_numFluxCoeff = fluxCoeff;
 
-    // Classify correctly neighbor elements
-    // with respect to the flux direction.
-    // NbrEl 0 : upstream
-    // NbrEl 1 : downstream
     int elf;
     for(int f=0; f<m_fNum; ++f) {
         for(int lf=0; lf<m_fNumPerEl; ++lf){
@@ -413,10 +387,9 @@ void Mesh::setNumFlux(std::string fluxType, double *a, double fluxCoeff) {
                 elf = lf;
         }
         if(!m_fIsBoundary[f]) {
-            // If order is not already correct
             if(elFOrientation(fNbrElId(f, 0), elf)*lapack::dot(a, &fNormal(f), m_Dim) <= 0) {
                 std::swap(m_fNbrElIds[f][0], m_fNbrElIds[f][1]);
-                for(int nf=0; nf<m_fNumPerEl; ++nf)
+                for(int nf=0; nf<m_fNumNodes; ++nf)
                     std::swap(fNToElNId(f, nf, 0), fNToElNId(f, nf, 1));
             }
         }
@@ -433,26 +406,38 @@ void Mesh::enforceDiricheletBCs(double* u) {
 //               [e1f1n1, e1f1n2, ... , e1f2n1, ..., e2f1n1, ....]
 // fNodeTags : nodes for each unique face
 //             [f1n1, f1n2, ... , f2n1, f2n2, ....]
-void Mesh::getUniqueFaceNodeTags(std::vector<int> &elFNodeTags, std::vector<int> &fNodeTags) {
+void Mesh::getUniqueFaceNodeTags() {
 
-    // Sort nodes on each faces
-    for(int i=0; i<elFNodeTags.size(); i+=m_fNumNodes)
-        std::sort(elFNodeTags.begin()+i, elFNodeTags.begin()+(i+m_fNumNodes));
+    // Ordering per face for efficient comparison
+    m_elFNodeTagsOrdered = m_elFNodeTags;
 
-    fNodeTags = elFNodeTags;
+    for(int i=0; i<m_elFNodeTagsOrdered.size(); i+=m_fNumNodes)
+        std::sort(m_elFNodeTagsOrdered.begin()+i, m_elFNodeTagsOrdered.begin()+(i+m_fNumNodes));
 
-    // Remove identical faces
-    std::vector<int>::iterator it_d;
-    for(std::vector<int>::iterator it = fNodeTags.begin(); it != fNodeTags.end();) {
+    // Unordered keep gmsh order while ordered array are used for comparison
+    m_fNodeTags = m_elFNodeTags;
+    m_fNodeTagsOrdered = m_elFNodeTagsOrdered;
 
-        for(it_d=it+m_fNumNodes; it_d != fNodeTags.end(); it_d+=m_fNumNodes) {
-            if(std::equal(it, it+m_fNumNodes, it_d))
+    // Remove identical faces by comparing ordered arrays.
+    std::vector<int>::iterator it_delete;
+    std::vector<int>::iterator it_deleteUnordered;
+    std::vector<int>::iterator it_unordered = m_fNodeTags.begin();
+    for(std::vector<int>::iterator it_ordered = m_fNodeTagsOrdered.begin(); it_ordered != m_fNodeTagsOrdered.end();) {
+
+        it_deleteUnordered = it_unordered+m_fNumNodes;
+        for(it_delete=it_ordered+m_fNumNodes; it_delete != m_fNodeTagsOrdered.end(); it_delete+=m_fNumNodes) {
+            if(std::equal(it_ordered, it_ordered+m_fNumNodes, it_delete))
                 break;
+            it_deleteUnordered+=m_fNumNodes;
         }
 
-        if(it_d != fNodeTags.end())
-            fNodeTags.erase(it_d, it_d+m_fNumNodes);
-        else
-            it+=m_fNumNodes;
+        if(it_delete != m_fNodeTagsOrdered.end()){
+            m_fNodeTagsOrdered.erase(it_delete, it_delete+m_fNumNodes);
+            m_fNodeTags.erase(it_deleteUnordered, it_deleteUnordered+m_fNumNodes);
+        }
+        else {
+            it_ordered+=m_fNumNodes;
+            it_unordered+=m_fNumNodes;
+        }
     }
 }

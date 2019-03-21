@@ -16,9 +16,6 @@ public:
     // Vector access: inline optimization (c++ macro)
     // Remove function overhead, by enforcing replacement
     // -> c+11, inline is implicit inside class core
-    inline int& elId(int elTag){
-        return m_elIds[elTag];
-    };
     inline int& elTag(int el) {
         return m_elTags[el];
     };
@@ -62,6 +59,14 @@ public:
     inline int& fNodeTag(int f, int i=0) {
         return m_fNodeTags[f*m_fNumNodes + i];
     };
+    // Getter : (el, f, i) -> i-th node of the f-th face for element 'el'
+    inline int& elFNodeTagOrdered(int el, int f=0, int i=0) {
+        return m_elFNodeTagsOrdered[el*m_fNumPerEl*m_fNumNodes + f*m_fNumNodes + i];
+    };
+    // Getter : (f, i) -> i-th node tags of the f-th face.
+    inline int& fNodeTagOrdered(int f, int i=0) {
+        return m_fNodeTagsOrdered[f*m_fNumNodes + i];
+    };
     // Getter : (f, g, i, j) -> dx_i/du_j(g) at int point 'g' for face 'f'.
     inline double& fJacobian(int f, int g=0, int x=0, int u=0) {
         return m_fJacobians[f*m_fNumIntPts*9 + g*9 + u*3 + x];
@@ -85,10 +90,6 @@ public:
     // Getter : (f, i) -> normal of face 'f'.
     inline double& fNormal(int f, int x=0) {
         return m_fNormals[f*3 + x];
-    };
-    // Getter : (tag) -> id
-    inline int &fId(int fTag){
-        return m_fIds[fTag];
     };
     // Getter : (el, f) -> f-th face id for element 'el'
     inline int &elFId(int el, int f=0) {
@@ -123,6 +124,9 @@ public:
     int getElNum(){
         return m_elNum;
     }
+    std::vector<int> const &getElNodeTags(){
+        return m_elNodeTags;
+    }
 
     // Compute the element mass matrix
     void getElMassMatrix(const int el, const bool inverse, double *elMassMatrix);
@@ -137,7 +141,7 @@ public:
     // Compute Numerical Flux through element 'el'
     void getElFlux(const int el, double* F);
     // Return the list of nodes for each unique face given a list of node per face and per elements
-    void getUniqueFaceNodeTags(std::vector<int> &elFNodeTags, std::vector<int> &fNodeTags);
+    void getUniqueFaceNodeTags();
     // Set and retrieve the element upstream
     void setNumFlux(std::string fluxType, double *a, double fluxCoeff=0.0);
     // Enforce boundaries conditions
@@ -169,11 +173,6 @@ private:
     std::vector<double> m_elParamCoord;
     // Tags of the elements
     std::vector<int> m_elTags;
-    // Map the element 'tag' to the element 'ID':
-    // - element tag = unique integer associated to the element by Gmsh
-    // - element id = indice in 'm_el*' vector storage
-    // NB: Vector instead of map guarantee very efficient O(1) lookup.
-    std::vector<int> m_elIds;
     // Tags of the nodes associated to each element
     // [e1n1, e1n2, ..., e2n1, e2n2, ...]
     std::vector<int> m_elNodeTags;
@@ -205,6 +204,7 @@ private:
     // [e1f1n1, e1f1n2, ..., e1f2n1, e1f2n2, ..., e2f1n1, e2f1n2, ...]
     // NB: Contains duplicated faces, each element refers to its own faces.
     std::vector<int> m_elFNodeTags;
+    std::vector<int> m_elFNodeTagsOrdered;
     // Contains 1 or -1, if the outward element face is in the same direction
     // as the face normal or -1 if not.
     // [e1f1, e1f2, ..., e2f1, e2f2]
@@ -229,14 +229,10 @@ private:
     // Node tags for each unique face
     // [f1n1, f1n2, ..., f2n1, f2n2, ...]
     std::vector<int> m_fNodeTags;
+    std::vector<int> m_fNodeTagsOrdered;
     // Tag for each unique face
     // [f1, f2, f3, ...]
     std::vector<int> m_fTags;
-    // Map the face 'tag' to the face 'ID':
-    // - face tag = unique integer associated to the face by Gmsh
-    // - face id = indice in 'm_f*' vector storage
-    // NB: Vector instead of map guarantee very efficient O(1) lookup.
-    std::vector<int> m_fIds;
     // Jacobian evaluated at each integration points : (dx/du)
     // [f1g1Jxx, f1g1Jxy, f1g1Jxz, ... f1g1Jzz, f1g2Jxx, ..., f1gGJzz, f2g1Jxx, ...]
     std::vector<double> m_fJacobians;
@@ -277,22 +273,19 @@ private:
 
     // Numeric flux type
     std::string m_numFluxType;
-    // Numeric flux coefficient
-    // Lax-Friedrich: (u- + u+)/2 + |c|(1-c)/2(u+ - u-)
+    // Numeric flux coefficient: k
+    // Lax-Friedrich: (u- + u+)/2 + |a|(1-k)/2(u+ - u-)
     double m_numFluxCoeff;
 
     // Dirichelet boundary conditions
     // int = node id in assembled solution vector
     // double = value of dirichelet BCs
     std::vector<std::pair<int, double>> m_elNodeDirichelet;
-    // Neumann & Dirichelet flux boundary conditions
-    // NB: Even if Dirichelet BCs doesn't not directly involve flux calculation
-    //     they need a particular treatment at the interfaces. For instance, upwind
-    //     flux may require out of domain values which are not defined. (ghost element not supported)
-    // [f1<1,0>, f2<2,0>, ...]
-    // int = boundary conditions type (1=Dirichelet, 2=Neumann)
-    // double = value of boundary condition
-    std::vector<std::pair<int, double>> m_fBCs;
+    // Neumann flux boundary conditions
+    // bool = is face a Neumann BC
+    // double = value of Neumann BC
+    // NB: By convention the normal points outward domain.
+    std::vector<std::pair<bool, double>> m_fNeumann;
 
 };
 

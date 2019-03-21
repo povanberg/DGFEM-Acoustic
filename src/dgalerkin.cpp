@@ -31,9 +31,23 @@ int main(int argc, char **argv)
     // Discontinuous Galerkin simulation.
     Mesh mesh(msh_name, config);
 
-    solver::solveTimeIntegration(mesh, config);
+    // Convection vector
+    std::vector<double> a = {3, 3, 0};
 
-    //gmsh::fltk::run();
+    // Initialize the solution
+    std::vector<double> u(mesh.getNumNodes());
+    for(int n=0; n<mesh.getNumNodes(); n++) {
+        std::vector<double> coord, paramCoord;
+        gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
+        // Gaussian
+        u[n] = exp(-((coord[0] - 10) * (coord[0] - 10) + (coord[1]- 0) * (coord[1]- 0))/0.5);
+    }
+
+    if(config.timeIntMethod == "Euler1")
+        solver::forwardEuler(u, a, mesh, config);
+    else if(config.timeIntMethod == "Runge-Kutta")
+        solver::rungeKutta(u, a, mesh, config);
+
     gmsh::finalize();
 
     return EXIT_SUCCESS;

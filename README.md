@@ -28,7 +28,7 @@ cmake .. && make -j4
 ```
 
 ### Run
-Once the sources sucessfully build, you can start playing with the solver. It required two arguments: a mesh file created with Gmsh and a config file containing the sikver options.
+Once the sources sucessfully build, you can start playing with the solver. It required two arguments: a mesh file created with Gmsh and a config file containing the solver options.
 ```
 cd bin
 ./dgalerkin mymesh.msh myconfig.conf

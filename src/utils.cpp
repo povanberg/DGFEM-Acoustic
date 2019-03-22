@@ -105,10 +105,46 @@ namespace eigen {
     void inverse(double *A, int &N) {
         Eigen::Map<Eigen::MatrixXd> A_eigen(A, N, N);
         Eigen::JacobiSVD<Eigen::MatrixXd> svd(A_eigen);
-        double cond = svd.singularValues()(0)
-                      / svd.singularValues()(svd.singularValues().size()-1);
-        std::cout << "cond " << cond << std::endl;
         A_eigen = A_eigen.inverse();
+    }
+
+    // Normalize a vector/matrix with respect to Frobenius norm
+    void normalize(double *A, int &N) {
+        Eigen::Map<Eigen::VectorXd> A_eigen(A, N);
+        A_eigen.normalize();
+    }
+
+    // Matrix/vector product:  y := alpha*A*x + beta*y
+    void linEq(double *A, double *X, double *Y, double &alpha, double beta, int &N) {
+        Eigen::Map<Eigen::VectorXd> X_eigen(X, N);
+        Eigen::Map<Eigen::VectorXd> Y_eigen(Y, N);
+        Eigen::Map<Eigen::MatrixXd> A_eigen(A, N, N);
+        Y_eigen = beta*Y_eigen +  alpha*A_eigen*X_eigen;
+    }
+
+    // Dot product between 2 vectors
+    double dot(double *A, double *B, int N) {
+        Eigen::Map<Eigen::VectorXd> A_eigen(A, N);
+        Eigen::Map<Eigen::VectorXd> B_eigen(B, N);
+        return A_eigen.dot(B_eigen);
+    }
+
+    void minus(double *A, double *B, int N) {
+        Eigen::Map<Eigen::VectorXd> A_eigen(A, N);
+        Eigen::Map<Eigen::VectorXd> B_eigen(B, N);
+        A_eigen -= B_eigen;
+    }
+
+    void plus(double *A, double *B, int N) {
+        Eigen::Map<Eigen::VectorXd> A_eigen(A, N);
+        Eigen::Map<Eigen::VectorXd> B_eigen(B, N);
+        A_eigen += B_eigen;
+    }
+
+    void plusTimes(double *A, double *B, double c, int N) {
+        Eigen::Map<Eigen::VectorXd> A_eigen(A, N);
+        Eigen::Map<Eigen::VectorXd> B_eigen(B, N);
+        A_eigen += c*B_eigen;
     }
 
 }

@@ -29,8 +29,8 @@ namespace solver {
             mesh.getElFlux(el, elFlux.data());
             mesh.getElStiffVector(el, a.data(), u.data(), elStiffvector.data());
 
-            lapack::minus(elStiffvector.data(), elFlux.data(), elNumNodes);
-            lapack::linEq(&mesh.elMassMatrix(el), &elStiffvector[0], &u[el*elNumNodes],
+            eigen::minus(elStiffvector.data(), elFlux.data(), elNumNodes);
+            eigen::linEq(&mesh.elMassMatrix(el), &elStiffvector[0], &u[el*elNumNodes],
                           config.timeStep, beta, elNumNodes);
         }
     }
@@ -122,11 +122,11 @@ namespace solver {
 
             k1 = k2 = k3 = k4 = u;
             numStep(mesh, config, k1, a, 0); // k1
-            lapack::plusTimes(k2.data(), k1.data(), 0.5, k2.size()); // k2
+            eigen::plusTimes(k2.data(), k1.data(), 0.5, k2.size()); // k2
             numStep(mesh, config, k2, a, 0);
-            lapack::plusTimes(k3.data(), k2.data(), 0.5, k3.size()); // k3
+            eigen::plusTimes(k3.data(), k2.data(), 0.5, k3.size()); // k3
             numStep(mesh, config, k3, a, 0);
-            lapack::plusTimes(k4.data(), k3.data(), 1.0, k4.size()); // k4
+            eigen::plusTimes(k4.data(), k3.data(), 1.0, k4.size()); // k4
             numStep(mesh, config, k4, a, 0);
 
             for(int i=0; i<u.size(); ++i){

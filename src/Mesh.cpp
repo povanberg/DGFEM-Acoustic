@@ -57,7 +57,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
                     }
                 }
                 std::copy(&elUGradBasisFct(g, f), &elUGradBasisFct(g, f) + m_elDim, &elGradBasisFct(el, g, f));
-                lapack::solve(jacobian.data(), &elGradBasisFct(el, g, f), m_elDim);
+                eigen::solve(jacobian.data(), &elGradBasisFct(el, g, f), m_elDim);
             }
         }
     }
@@ -133,7 +133,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
                 // Todo(19/03/2019)
                 break;
         }
-        lapack::normalize(normal.data(), size);
+        eigen::normalize(normal.data(), size);
         m_fNormals.insert(m_fNormals.end(), normal.begin(), normal.end());
     }
 
@@ -290,7 +290,7 @@ void Mesh::getElMassMatrix(const int el, const bool inverse, double *elMassMatri
         }
     }
     if(inverse)
-        lapack::inverse(elMassMatrix, m_elNumNodes);
+        eigen::inverse(elMassMatrix, m_elNumNodes);
 }
 
 // Compute the element stiffness/convection matrix.
@@ -304,7 +304,7 @@ void Mesh::getElStiffVector(const int el, double* a, double* u, double *elStiffV
         elStiffVector[i] = 0.0;
         for (int j = 0; j < m_elNumNodes; ++j) {
             for(int g=0; g<m_elNumIntPts; g++) {
-                elStiffVector[i] += lapack::dot(a, &elGradBasisFct(el, g, i), m_Dim)*
+                elStiffVector[i] += eigen::dot(a, &elGradBasisFct(el, g, i), m_Dim)*
                                     elBasisFct(g,j)*u[el*m_elNumNodes+j]*elWeight(g)*elJacobianDet(el, g);
             }
         }
@@ -323,7 +323,7 @@ void Mesh::getFlux(const int f, double* a, double * u, double* F) {
     }
     else {
         // Some precomputation
-        double dot = lapack::dot(&fNormal(f), a, m_Dim);
+        double dot = eigen::dot(&fNormal(f), a, m_Dim);
         std::vector<double> FIntPts(m_fNumIntPts, 0);
         // Get Flux at gauss points
         for(int g=0; g<m_fNumIntPts; ++g) {
@@ -388,7 +388,7 @@ void Mesh::setNumFlux(std::string fluxType, double *a, double fluxCoeff) {
                 elf = lf;
         }
         if(!m_fIsBoundary[f]) {
-            if(elFOrientation(fNbrElId(f, 0), elf)*lapack::dot(a, &fNormal(f), m_Dim) <= 0) {
+            if(elFOrientation(fNbrElId(f, 0), elf)*eigen::dot(a, &fNormal(f), m_Dim) <= 0) {
                 std::swap(m_fNbrElIds[f][0], m_fNbrElIds[f][1]);
                 for(int nf=0; nf<m_fNumNodes; ++nf)
                     std::swap(fNToElNId(f, nf, 0), fNToElNId(f, nf, 1));

@@ -26,6 +26,9 @@ struct Config {
     // value : tuple<BCType, BCValue>
     std::map<int, std::pair<std::string, double>> physBCs;
 
+    // Number of threads
+    int numThreads = 1;
+
     // Save file
     std::string saveFile = "results.msh";
 };

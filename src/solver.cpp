@@ -2,6 +2,9 @@
 #include <gmsh.h>
 #include <utils.h>
 #include <iostream>
+#include <chrono>
+#include <omp.h>
+
 #include "configParser.h"
 #include "Mesh.h"
 
@@ -19,6 +22,8 @@ namespace solver {
     void numStep(Mesh &mesh, Config config, std::vector<double> &u, std::vector<double> &a, double beta){
 
         mesh.precomputeFlux(a.data(), u.data());
+
+        #pragma omp parallel for schedule(static) firstprivate(elFlux, elStiffvector) num_threads(config.numThreads)
         for(int el=0; el<mesh.getElNum(); ++el){
 
             mesh.getElFlux(el, elFlux.data());
@@ -47,6 +52,8 @@ namespace solver {
         mesh.precomputeMassMatrix();
         mesh.setNumFlux(config.flux, a.data(), config.fluxCoeff);
 
+        auto start = std::chrono::system_clock::now();
+
         for(double t=config.timeStart, tDisplay=0, step=0;
                    t<=config.timeEnd;
                    t+=config.timeStep, tDisplay+=config.timeStep, ++step) {
@@ -58,8 +65,10 @@ namespace solver {
                     g_u[n][0] = u[n];
                 }
                 gmsh::view::addModelData(g_viewTag, step, g_names[0], "NodeData", elNodeTags, g_u, t, 1);
-                gmsh::logger::write("[" + std::to_string(t) + "/" + std::to_string(config.timeEnd) +
-                                    "s] Step number : " + std::to_string(step));
+                auto end = std::chrono::system_clock::now();
+                auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+                gmsh::logger::write("[" + std::to_string(t) + "/" + std::to_string(config.timeEnd) + "s] Step number : "
+                                    + std::to_string((int) step) + ", Elapsed time: " + std::to_string(elapsed.count()) +"s");
             }
 
             numStep(mesh, config, u, a, 1.0);
@@ -92,6 +101,8 @@ namespace solver {
         mesh.precomputeMassMatrix();
         mesh.setNumFlux(config.flux, a.data(), config.fluxCoeff);
 
+        auto start = std::chrono::system_clock::now();
+
         for(double t=config.timeStart, tDisplay=0, step=0;
             t<=config.timeEnd;
             t+=config.timeStep, tDisplay+=config.timeStep, ++step) {
@@ -103,8 +114,10 @@ namespace solver {
                     g_u[n][0] = u[n];
                 }
                 gmsh::view::addModelData(g_viewTag, step, g_names[0], "NodeData", elNodeTags, g_u, t, 1);
-                gmsh::logger::write("[" + std::to_string(t) + "/" + std::to_string(config.timeEnd) +
-                                    "s] Step number : " + std::to_string(step));
+                auto end = std::chrono::system_clock::now();
+                auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+                gmsh::logger::write("[" + std::to_string(t) + "/" + std::to_string(config.timeEnd) + "s] Step number : "
+                                    + std::to_string((int) step) + ", Elapsed time: " + std::to_string(elapsed.count()) +"s");
             }
 
             k1 = k2 = k3 = k4 = u;

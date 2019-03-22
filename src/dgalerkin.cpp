@@ -2,6 +2,8 @@
 #include <gmsh.h>
 #include <errno.h>
 #include <iostream>
+#include <omp.h>
+#include <cblas.h>
 
 #include "Mesh.h"
 #include "solver.h"

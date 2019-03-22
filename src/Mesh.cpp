@@ -4,6 +4,7 @@
 #include <iostream>
 #include <chrono>
 #include <algorithm>
+#include <omp.h>
 
 #include "configParser.h"
 #include "Mesh.h"
@@ -43,10 +44,8 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     // |dz/du dz/dv dz/dw|    |df/dz|   |df/dw|
     // NB: Instead of transposing, we take advantages of the fact
     // Lapack/Blas use column major while Gmsh provides row major.
-    int jacobianSize = 3;
-    std::vector<double> jacobian(jacobianSize*jacobianSize);
-    m_elGradBasisFcts = std::vector<double>(m_elNum*m_elNumNodes*m_elNumIntPts*3);
-    std::fill(m_elGradBasisFcts.begin(), m_elGradBasisFcts.end(),0);
+    std::vector<double> jacobian(m_elDim*m_elDim);
+    m_elGradBasisFcts.resize(m_elNum*m_elNumNodes*m_elNumIntPts*3);
     for (int el = 0; el < m_elNum; ++el) {
         for (int g = 0; g < m_elNumIntPts; ++g) {
             for (int f = 0; f < m_elNumNodes; ++f) {
@@ -270,8 +269,9 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
 // Precompute and store the mass matris for all elements in m_elMassMatrix
 void Mesh::precomputeMassMatrix() {
     m_elMassMatrices.resize(m_elNum*m_elNumNodes*m_elNumNodes);
-    for(int el=0; el<m_elNum; ++el)
+    for(int el=0; el<m_elNum; ++el) {
         getElMassMatrix(el, true, &elMassMatrix(el));
+    }
 }
 
 // Compute the element mass matrix.
@@ -347,6 +347,7 @@ void Mesh::getFlux(const int f, double* a, double * u, double* F) {
 // Precompute the flux through all surfaces
 void Mesh::precomputeFlux(double* a, double * u) {
     m_fFlux.resize(m_fNum*m_fNumNodes);
+    #pragma omp parallel for schedule(static) num_threads(config.numThreads)
     for(int f=0; f<m_fNum; ++f) {
         getFlux(f, a, u, &fFlux(f));
     }

@@ -39,6 +39,7 @@ namespace config{
             config.elementType = configMap["elementType"];
             config.timeIntMethod = configMap["timeIntMethod"];
             config.saveFile = configMap["saveFile"];
+            config.numThreads = std::stoi(configMap["numThreads"]);
 
             // Config physical group must match gmsh physical group
             std::string physName;
@@ -47,11 +48,11 @@ namespace config{
             for(int p=0; p<m_physicalDimTags.size(); ++p) {
                 gmsh::model::getPhysicalName(m_physicalDimTags[p].first, m_physicalDimTags[p].second, physName);
                 if(configMap[physName].find("Dirichelet") == 0) {
-                    int valueBC = std::stod(configMap[physName].substr(10));
+                    double valueBC = std::stod(configMap[physName].substr(10));
                     config.physBCs[m_physicalDimTags[p].second] = std::make_pair("Dirichelet", valueBC);
                 }
                 else if (configMap[physName].find("Neumann") == 0) {
-                    int valueBC = std::stod(configMap[physName].substr(7));
+                    double valueBC = std::stod(configMap[physName].substr(7));
                     config.physBCs[m_physicalDimTags[p].second] = std::make_pair("Neumann", valueBC);
                 }
                 else {

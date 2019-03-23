@@ -147,5 +147,11 @@ namespace eigen {
         A_eigen += c*B_eigen;
     }
 
+    void cross(double *A, double *B, double *OUT) {
+        Eigen::Map<Eigen::Vector3d> A_eigen(A);
+        Eigen::Map<Eigen::Vector3d> B_eigen(B);
+        Eigen::Map<Eigen::Vector3d> OUT_eigen(OUT);
+        OUT_eigen = A_eigen.cross(B_eigen);
+    }
 }
 

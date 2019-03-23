@@ -24,6 +24,7 @@ namespace lapack {
 }
 
 namespace eigen {
+
     void inverse(double *A, int &N);
 
     void solve(double *A, double *B, int &N);
@@ -39,6 +40,8 @@ namespace eigen {
     void plus(double *A, double *B, int N);
 
     void plusTimes(double *A, double *B, double c, int N);
+
+    void cross(double *A, double *B, double *OUT);
 }
 
 namespace display {

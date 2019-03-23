@@ -118,7 +118,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     // Define a normal associated to each surface. For now
     // the faces are assumed to be straight.
     int size = 3;
-    std::vector<double> normal, coord1, coord2, paramCoords;
+    std::vector<double> normal(3), coord1, coord2, coord3, paramCoords;
     for(int f=0; f<m_fNum; ++f) {
         switch(m_fDim) {
             case 0:
@@ -130,7 +130,12 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
                 normal = {coord1[1]-coord2[1], coord2[0]-coord1[0], 0};
                 break;
             case 2:
-                // Todo(19/03/2019)
+                gmsh::model::mesh::getNode(fNodeTag(f, 0), coord1, paramCoords);
+                gmsh::model::mesh::getNode(fNodeTag(f, 1), coord2, paramCoords);
+                gmsh::model::mesh::getNode(fNodeTag(f, 2), coord3, paramCoords);
+                std::vector<double> v1 = {coord2[0]-coord1[0], coord2[1]-coord1[1], coord2[2]-coord1[2]};
+                std::vector<double> v2 = {coord3[0]-coord1[0], coord3[1]-coord1[1], coord3[2]-coord1[2]};
+                eigen::cross(v1.data(), v2.data(), normal.data());
                 break;
         }
         eigen::normalize(normal.data(), size);
@@ -207,6 +212,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     }
     assert(m_elFOrientation.size() == m_elNum*m_fNumPerEl);
 
+    gmsh::logger::write("------------------------------------------------");
     gmsh::logger::write("Element-Face connectivity sucessfully done.");
 
     //---------------------------------------------------------------------
@@ -263,7 +269,9 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
         }
     }
 
+    gmsh::logger::write("------------------------------------------------");
     gmsh::logger::write("Boundary conditions sucessfuly loaded.");
+    gmsh::logger::write("------------------------------------------------");
 }
 
 // Precompute and store the mass matris for all elements in m_elMassMatrix

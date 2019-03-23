@@ -34,7 +34,7 @@ int main(int argc, char **argv)
     Mesh mesh(msh_name, config);
 
     // Convection vector
-    std::vector<double> a = {3, 3, 0};
+    std::vector<double> a = {3, 0, 0};
 
     // Initialize the solution
     std::vector<double> u(mesh.getNumNodes());
@@ -42,7 +42,7 @@ int main(int argc, char **argv)
         std::vector<double> coord, paramCoord;
         gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
         // Gaussian
-        u[n] = exp(-((coord[0] - 10) * (coord[0] - 10) + (coord[1]- 0) * (coord[1]- 0))/0.5);
+        u[n] = exp(-((coord[0] + 5) * (coord[0] + 5) + (coord[1]+ 0) * (coord[1]- 0) + (coord[2]- 0) * (coord[2]- 0))/2.5);
     }
 
     if(config.timeIntMethod == "Euler1")

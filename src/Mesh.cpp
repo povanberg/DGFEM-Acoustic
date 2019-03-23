@@ -88,7 +88,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     m_fType = gmsh::model::mesh::getElementType(m_fName, m_elOrder);
     m_fNumNodes = m_fDim == 0 ? 1           :
                   m_fDim == 1 ? 1+m_elOrder :
-                  m_fDim == 2 ? 3*m_elOrder : // Triangular elements only and up to order 2.
+                  m_fDim == 2 ? (m_elOrder+1)*(m_elOrder+2)/2 : // Triangular elements only.
                   0;
 
     if(m_fDim < 2)

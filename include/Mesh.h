@@ -75,6 +75,14 @@ public:
     inline double& fJacobianDet(int f, int g=0) {
         return m_fJacobianDets[f*m_fNumIntPts + g];
     };
+    //  Getter : (g, i, u) -> u-th derivative of the i-th basis fct evaluated at g-th int point.
+    inline double& fUGradBasisFct(int g, int i=0, int u=0) {
+        return m_fUGradBasisFcts[g*m_fNumNodes*3 + i*3 + u];
+    };
+    //  Getter : (el, g, i, x) -> x-th derivative of the i-th basis fct evaluated at g-th int point for the element 'el'.
+    inline double& fGradBasisFct(int f, int g=0, int i=0, int x=0) {
+        return m_fGradBasisFcts[f*m_fNumIntPts*m_fNumNodes*3 + g*m_fNumNodes*3 + i*3 + x];
+    };
     // Getter : (f, g, x) -> coordinate x of the int point 'g' for face 'f'.
     inline double& fIntPtCoord(int f, int g=0, int x=0) {
         return m_fIntPtCoords[f*m_fNumIntPts*3 + g*3 + x];
@@ -87,9 +95,9 @@ public:
     inline double& fBasisFct(int g, int i=0) {
         return m_fBasisFcts[g*m_fNumNodes + i];
     };
-    // Getter : (f, i) -> normal of face 'f'.
-    inline double& fNormal(int f, int x=0) {
-        return m_fNormals[f*3 + x];
+    // Getter : (f, g, i) -> normal at gauss point 'g' of face 'f'.
+    inline double& fNormal(int f, int g=0, int x=0) {
+        return m_fNormals[f*3*m_fNumIntPts + g*3 + x];
     };
     // Getter : (el, f) -> f-th face id for element 'el'
     inline int &elFId(int el, int f=0) {
@@ -142,6 +150,8 @@ public:
     void getElFlux(const int el, double* F);
     // Return the list of nodes for each unique face given a list of node per face and per elements
     void getUniqueFaceNodeTags();
+    // Compute and store normal for each faces
+    void setFaceNormals();
     // Set and retrieve the element upstream
     void setNumFlux(std::string fluxType, double *a, double fluxCoeff=0.0);
     // Enforce boundaries conditions
@@ -248,8 +258,14 @@ private:
     // Evaluation of the basis functions at the integration points
     // [g1f1, g1f2, ..., g2f1, g2f2, ...]
     std::vector<double> m_fBasisFcts;
-    // Normal for each surface
-    // [f1Nx, f1Ny, f1Nz, f2Nx, ...]
+    // Evaluation of the derivatives of the basis functions at the integration points
+    // [g1df1/du, g1df1/dv, ..., g2df1/du, g2df1/dv, ..., g1df2/du, g1df2/dv, ...]
+    std::vector<double> m_fUGradBasisFcts;
+    // Evaluation of the derivatives of the basis functions at the integration points
+    // [e1g1df1/dx, e1g1df1/dy, ..., e1g2df1/dx, e1g2df1/dy, ..., e1g1df2/dx, e1g1df2/dy, ...]
+    std::vector<double> m_fGradBasisFcts;
+    // Normal for each face at each int point
+    // [f1g1Nx, f1g1Ny, f1g1Nz, f1g2Nx, ..., f2g1Nx, f2g1Ny, f2g1Nz, ...]
     std::vector<double> m_fNormals;
     // Is Face a boundary
     std::vector<bool> m_fIsBoundary;

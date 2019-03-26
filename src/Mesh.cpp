@@ -114,38 +114,36 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     m_fNumIntPts = (int) m_fJacobianDets.size() / m_fNum;
     gmsh::model::mesh::getBasisFunctions(m_fType, m_elIntType, config.elementType,
                                          m_fIntParamCoords, *new int, m_fBasisFcts);
+    gmsh::model::mesh::getBasisFunctions(m_fType, m_elIntType, "Grad"+config.elementType,
+                                         m_fIntParamCoords, *new int, m_fUGradBasisFcts);
 
-    // Define a normal associated to each surface. For now
-    // the faces are assumed to be straight.
-    int size = 3;
-    std::vector<double> normal(3), coord1, coord2, coord3, paramCoords;
-    for(int f=0; f<m_fNum; ++f) {
-        switch(m_fDim) {
-            case 0:
-                normal = {1, 0, 0};
-                break;
-            case 1:
-                gmsh::model::mesh::getNode(fNodeTag(f, 0), coord1, paramCoords);
-                gmsh::model::mesh::getNode(fNodeTag(f, 1), coord2, paramCoords);
-                normal = {coord1[1]-coord2[1], coord2[0]-coord1[0], 0};
-                break;
-            case 2:
-                gmsh::model::mesh::getNode(fNodeTag(f, 0), coord1, paramCoords);
-                gmsh::model::mesh::getNode(fNodeTag(f, 1), coord2, paramCoords);
-                gmsh::model::mesh::getNode(fNodeTag(f, 2), coord3, paramCoords);
-                std::vector<double> v1 = {coord2[0]-coord1[0], coord2[1]-coord1[1], coord2[2]-coord1[2]};
-                std::vector<double> v2 = {coord3[0]-coord1[0], coord3[1]-coord1[1], coord3[2]-coord1[2]};
-                eigen::cross(v1.data(), v2.data(), normal.data());
-                break;
+    // Gmsh provides the derivative of the shape functions along
+    // the parametric directions. We therefore compute their derivative
+    // along the physical directions thanks to composed derivative.
+    m_fGradBasisFcts.resize(m_fNum*m_fNumNodes*m_fNumIntPts*3);
+    for (int f = 0; f < m_fNum; ++f) {
+        for (int g = 0; g < m_fNumIntPts; ++g) {
+            for (int n = 0; n < m_fNumNodes; ++n) {
+                // The copy operations are not required. They're simply enforced
+                // to ensure that the inputs (jacobian, grad) remains unchanged.
+                for(int i=0; i<m_elDim; ++i){
+                    for(int j=0; j<m_elDim; ++j) {
+                        jacobian[i*m_elDim+j] = fJacobian(f, g, i, j);
+                    }
+                }
+                std::copy(&fUGradBasisFct(g, n), &fUGradBasisFct(g, n) + m_elDim, &fGradBasisFct(f, g, n));
+                eigen::solve(jacobian.data(), &fGradBasisFct(f, g, n), m_elDim);
+            }
         }
-        eigen::normalize(normal.data(), size);
-        m_fNormals.insert(m_fNormals.end(), normal.begin(), normal.end());
     }
+
+    // Define a normal associated to each surface.
+    setFaceNormals();
 
     assert(m_elFNodeTags.size() == m_elNum*m_fNumPerEl*m_fNumNodes);
     assert(m_fJacobianDets.size() == m_fNum*m_fNumIntPts);
     assert(m_fBasisFcts.size() == m_fNumNodes*m_fNumIntPts);
-    assert(m_fNormals.size() == m_Dim*m_fNum);
+    assert(m_fNormals.size() == m_Dim*m_fNum*m_fNumIntPts);
 
     gmsh::logger::write("------------------------------------------------");
     gmsh::logger::write("Number of Faces : " + std::to_string(m_fNum));
@@ -194,7 +192,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     // Define the normal direction per element with respect
     // to the normal of the face (+1 if outer,-1 if inner)
     double dotProduct;
-    std::vector<double> m_elBarycenters, fNodeCoord(3), elOuterDir(3);
+    std::vector<double> m_elBarycenters, fNodeCoord(3), elOuterDir(3), paramCoords;
     gmsh::model::mesh::getBarycenters(m_elType[0], -1, false, true, m_elBarycenters);
     for(int el=0; el<m_elNum; ++el) {
         for(int f=0; f<m_fNumPerEl; ++f) {
@@ -202,7 +200,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
             gmsh::model::mesh::getNode(elFNodeTag(el, f), fNodeCoord, paramCoords);
             for(int x=0; x<3; x++) {
                 elOuterDir[x] = fNodeCoord[x] - m_elBarycenters[el*3+x];
-                dotProduct += elOuterDir[x]*fNormal(elFId(el, f), x);
+                dotProduct += elOuterDir[x]*fNormal(elFId(el, f), 0, x);
             }
             if(dotProduct >= 0)
                 m_elFOrientation.push_back(1);
@@ -221,15 +219,17 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
 
     // Check if a face is a boundary or not and orientate
     // the normal at boundaries in the outward direction.
-    // This convention is particularly usefull for BCs.
+    // This convention is particularly useful for BCs.
     for(int f=0; f<m_fNum; ++f){
         if(m_fNbrElIds[f].size()<2) {
             m_fIsBoundary.push_back(true);
             for(int lf=0; lf<m_fNumPerEl; ++lf) {
                 if(elFId(fNbrElId(f, 0), lf) == f){
-                    fNormal(f, 0) *= elFOrientation(fNbrElId(f, 0), lf);
-                    fNormal(f, 1) *= elFOrientation(fNbrElId(f, 0), lf);
-                    fNormal(f, 2) *= elFOrientation(fNbrElId(f, 0), lf);
+                    for(int g=0; g<m_fNumIntPts; ++g){
+                        fNormal(f, g, 0) *= elFOrientation(fNbrElId(f, 0), lf);
+                        fNormal(f, g, 1) *= elFOrientation(fNbrElId(f, 0), lf);
+                        fNormal(f, g, 2) *= elFOrientation(fNbrElId(f, 0), lf);
+                    }
                     elFOrientation(fNbrElId(f, 0), lf) = 1;
                 }
             }
@@ -249,7 +249,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
         auto BCtype = physBC.second.first;
         auto BCvalue = physBC.second.second;
         gmsh::model::mesh::getNodesForPhysicalGroup(m_fDim, physTag, nodeTags, coord);
-        if(BCtype == "Dirichelet"){
+        if(BCtype == "Dirichelet") {
             for(int n=0; n<nodeTags.size(); ++n) {
                 for(int el=0; el<m_elNum; ++el) {
                     for(int nel=0; nel<m_elNumNodes; ++nel) {
@@ -330,14 +330,12 @@ void Mesh::getFlux(const int f, double* a, double * u, double* F) {
             std::fill(F, F+m_fNumNodes, m_fNeumann[f].second);
     }
     else {
-        // Some precomputation
-        double dot = eigen::dot(&fNormal(f), a, m_Dim);
         std::vector<double> FIntPts(m_fNumIntPts, 0);
         // Get Flux at gauss points
         for(int g=0; g<m_fNumIntPts; ++g) {
             for (int i = 0; i < m_fNumNodes; ++i) {
                 // Lax-friedrich flux
-                FIntPts[g] += dot * fBasisFct(g, i) *
+                FIntPts[g] += eigen::dot(&fNormal(f, g), a, m_Dim) * fBasisFct(g, i) *
                               ((2-m_numFluxCoeff)*u[fNbrElId(f, 0) * m_elNumNodes + fNToElNId(f, i, 0)] +
                                   m_numFluxCoeff* u[fNbrElId(f, 1) * m_elNumNodes + fNToElNId(f, i, 1)]) / 2.;
             }
@@ -409,6 +407,62 @@ void Mesh::enforceDiricheletBCs(double* u) {
     for(int n=0; n<m_elNodeDirichelet.size(); ++n)
         u[m_elNodeDirichelet[n].first] = m_elNodeDirichelet[n].second;
 };
+
+// Compute and store normal for each faces
+void Mesh::setFaceNormals() {
+
+    std::vector<double> normal(m_Dim);
+
+    for(int f=0; f<m_fNum; ++f) {
+        for(int g=0; g<m_fNumIntPts; ++g) {
+
+            switch (m_fDim) {
+                case 0: {
+                    normal = {1, 0, 0};
+                    break;
+                }
+                case 1: {
+                    std::vector<double> normalPlane = {0, 0, 1};
+                    eigen::cross(&fGradBasisFct(f, g, 0), normalPlane.data(), normal.data());
+                    if(eigen::dot(&fGradBasisFct(f, g), &fGradBasisFct(f, 0), m_Dim) < 0) {
+                        for (int x = 0; x < m_Dim; ++x) {
+                            normal[x] = -normal[x];
+                        }
+                    }
+                }
+                    break;
+                case 2: {
+                    std::vector<double> coord1, coord2, coord3, paramCoords;
+                    gmsh::model::mesh::getNode(fNodeTag(f, 0), coord1, paramCoords);
+                    gmsh::model::mesh::getNode(fNodeTag(f, 1), coord2, paramCoords);
+                    gmsh::model::mesh::getNode(fNodeTag(f, 2), coord3, paramCoords);
+                    std::vector<double> v1 = {coord2[0]-coord1[0], coord2[1]-coord1[1], coord2[2]-coord1[2]};
+                    std::vector<double> v2 = {coord3[0]-coord1[0], coord3[1]-coord1[1], coord3[2]-coord1[2]};
+                    eigen::cross(v1.data(), v2.data(), normal.data());
+                    break;
+                }
+            }
+            eigen::normalize(normal.data(), m_Dim);
+            m_fNormals.insert(m_fNormals.end(), normal.begin(), normal.end());
+        }
+    }
+
+    // Plots
+    /*std::vector<double> viewNormals;
+    for(int f=0; f<m_fNum; f++) {
+        for(int g=0; g<m_fNumIntPts; ++g){
+            for(int x=0; x<3; ++x)
+                viewNormals.push_back(fIntPtCoord(f, g, x));
+            for(int x=0; x<3; ++x)
+                viewNormals.push_back(fNormal(f, g, x));
+        }
+    }
+    int normalTag = 1;
+    gmsh::view::add("normals", normalTag);
+    gmsh::view::addListData(normalTag, "VP", m_fNum*m_fNumIntPts, viewNormals);
+    gmsh::view::write(normalTag, "normal.pos");*/
+
+}
 
 // Return the list of nodes for each unique face given a list of node per face and per elements
 // elFNodeTags : nodes for each face of each element

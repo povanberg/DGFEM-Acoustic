@@ -12,7 +12,7 @@ namespace solver {
 
     // Common variables to all solver
     int elNumNodes;
-    std::vector<int> elNodeTags;
+    std::vector<int> elTags;
     std::vector<double> elFlux;
     std::vector<double> elStiffvector;
     // Gmsh
@@ -40,14 +40,14 @@ namespace solver {
     // a : convection vector          |   config : ...
     void forwardEuler(std::vector<double> &u, std::vector<double> &a, Mesh &mesh, Config config) {
 
-        std::vector<std::vector<double>> g_u(mesh.getElNodeTags().size(), std::vector<double>(1));
-        g_viewTag = gmsh::view::add("Results");
-        gmsh::model::list(g_names);
-
         elNumNodes = mesh.getElNumNodes();
-        elNodeTags = mesh.getElNodeTags();
+        elTags = std::vector<int>(&mesh.elTag(0), &mesh.elTag(0)+mesh.getElNum());
         elFlux.resize(mesh.getElNumNodes());
         elStiffvector.resize(mesh.getElNumNodes());
+
+        g_viewTag = gmsh::view::add("Results");
+        gmsh::model::list(g_names);
+        std::vector<std::vector<double>> g_u(mesh.getElNum(), std::vector<double>(elNumNodes));
 
         mesh.precomputeMassMatrix();
         mesh.setNumFlux(config.flux, a.data(), config.fluxCoeff);
@@ -61,10 +61,12 @@ namespace solver {
             // Savings. (Done at start of step to catch initial configuration)
             if(tDisplay>=config.timeRate || step==0){
                 tDisplay = 0;
-                for (int n = 0; n < elNodeTags.size(); ++n) {
-                    g_u[n][0] = u[n];
+                for(int el = 0; el < mesh.getElNum(); ++el) {
+                    for(int n = 0; n < mesh.getElNumNodes(); ++n) {
+                        g_u[el][n] = u[el*elNumNodes+n];
+                    }
                 }
-                gmsh::view::addModelData(g_viewTag, step, g_names[0], "NodeData", elNodeTags, g_u, t, 1);
+                gmsh::view::addModelData(g_viewTag, step, g_names[0], "ElementNodeData", elTags, g_u, t, 1);
                 auto end = std::chrono::system_clock::now();
                 auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
                 gmsh::logger::write("[" + std::to_string(t) + "/" + std::to_string(config.timeEnd) + "s] Step number : "
@@ -84,14 +86,14 @@ namespace solver {
     // a : convection vector          |   config : ...
     void rungeKutta(std::vector<double> &u, std::vector<double> &a, Mesh &mesh, Config config) {
 
-        std::vector<std::vector<double>> g_u(mesh.getElNodeTags().size(), std::vector<double>(1));
-        g_viewTag = gmsh::view::add("Results");
-        gmsh::model::list(g_names);
-
         elNumNodes = mesh.getElNumNodes();
-        elNodeTags = mesh.getElNodeTags();
+        elTags = std::vector<int>(&mesh.elTag(0), &mesh.elTag(0)+mesh.getElNum());
         elFlux.resize(mesh.getElNumNodes());
         elStiffvector.resize(mesh.getElNumNodes());
+
+        g_viewTag = gmsh::view::add("Results");
+        gmsh::model::list(g_names);
+        std::vector<std::vector<double>> g_u(mesh.getElNum(), std::vector<double>(elNumNodes));
 
         std::vector<double> k1;
         std::vector<double> k2;
@@ -110,10 +112,12 @@ namespace solver {
             // Savings. (Done at start of step to catch initial configuration)
             if(tDisplay>=config.timeRate || step==0){
                 tDisplay = 0;
-                for (int n = 0; n < elNodeTags.size(); ++n) {
-                    g_u[n][0] = u[n];
+                for(int el = 0; el < mesh.getElNum(); ++el) {
+                    for(int n = 0; n < mesh.getElNumNodes(); ++n) {
+                        g_u[el][n] = u[el*elNumNodes+n];
+                    }
                 }
-                gmsh::view::addModelData(g_viewTag, step, g_names[0], "NodeData", elNodeTags, g_u, t, 1);
+                gmsh::view::addModelData(g_viewTag, step, g_names[0], "ElementNodeData", elTags, g_u, t, 1);
                 auto end = std::chrono::system_clock::now();
                 auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
                 gmsh::logger::write("[" + std::to_string(t) + "/" + std::to_string(config.timeEnd) + "s] Step number : "

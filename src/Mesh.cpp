@@ -5,6 +5,7 @@
 #include <chrono>
 #include <algorithm>
 #include <omp.h>
+#include <math.h>
 
 #include "configParser.h"
 #include "Mesh.h"
@@ -424,21 +425,23 @@ void Mesh::setFaceNormals() {
                 case 1: {
                     std::vector<double> normalPlane = {0, 0, 1};
                     eigen::cross(&fGradBasisFct(f, g, 0), normalPlane.data(), normal.data());
+                    double norm = sqrt(normal[0]*normal[0]+normal[1]*normal[1]+normal[2]*normal[2]);
+                    normal[0] = normal[0]/norm;
+                    normal[1] = normal[1]/norm;
+                    normal[2] = normal[2]/norm;
                     if(eigen::dot(&fGradBasisFct(f, g), &fGradBasisFct(f, 0), m_Dim) < 0) {
                         for (int x = 0; x < m_Dim; ++x) {
                             normal[x] = -normal[x];
                         }
                     }
-                }
                     break;
+                }
                 case 2: {
-                    std::vector<double> coord1, coord2, coord3, paramCoords;
-                    gmsh::model::mesh::getNode(fNodeTag(f, 0), coord1, paramCoords);
-                    gmsh::model::mesh::getNode(fNodeTag(f, 1), coord2, paramCoords);
-                    gmsh::model::mesh::getNode(fNodeTag(f, 2), coord3, paramCoords);
-                    std::vector<double> v1 = {coord2[0]-coord1[0], coord2[1]-coord1[1], coord2[2]-coord1[2]};
-                    std::vector<double> v2 = {coord3[0]-coord1[0], coord3[1]-coord1[1], coord3[2]-coord1[2]};
-                    eigen::cross(v1.data(), v2.data(), normal.data());
+                    eigen::cross(&fGradBasisFct(f, g, 0), &fGradBasisFct(f, g, 1), normal.data());
+                    double norm = sqrt(normal[0]*normal[0]+normal[1]*normal[1]+normal[2]*normal[2]);
+                    normal[0] = normal[0]/norm;
+                    normal[1] = normal[1]/norm;
+                    normal[2] = normal[2]/norm;
                     break;
                 }
             }

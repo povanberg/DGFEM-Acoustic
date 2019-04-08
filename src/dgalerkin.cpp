@@ -33,15 +33,17 @@ int main(int argc, char **argv)
     Mesh mesh(msh_name, config);
 
     // Convection vector
-    std::vector<double> a = {3, 0, 0};
+    std::vector<std::vector<double>> a = {{3, 0, 0},{0, 3, 0},{-3, 0, 0},{0, -3, 0}};
 
     // Initialize the solution
-    std::vector<double> u(mesh.getNumNodes());
-    for(int n=0; n<mesh.getNumNodes(); n++) {
-        std::vector<double> coord, paramCoord;
-        gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
-        // Gaussian
-        u[n] = exp(-((coord[0] - 0) * (coord[0] - 0) + (coord[1]+ 0) * (coord[1]- 0) + (coord[2]- 0) * (coord[2]- 0))/1);
+    std::vector<std::vector<double>> u(4,std::vector<double>(mesh.getNumNodes()));
+    for(int v=0; v<u.size(); v++){
+        for(int n=0; n<mesh.getNumNodes(); n++){
+            std::vector<double> coord, paramCoord;
+            gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
+            // Gaussian
+            u[v][n] = exp(-((coord[0] - 10) * (coord[0] - 10) + (coord[1]+ 0) * (coord[1]- 0) + (coord[2]- 0) * (coord[2]- 0))/1);
+        }
     }
 
     if(config.timeIntMethod == "Euler1")

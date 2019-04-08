@@ -377,7 +377,7 @@ void Mesh::getElFlux(const int el, double* F) {
 // Set numerical flux type and correpsonding coefficient in lax-friedrich formula.
 // Reclassify correctly neighbor elements with respect to the flux direction.
 // NbrEl 0 : upstream and NbrEl 1 : downstream
-void Mesh::setNumFlux(std::string fluxType, double *a, double fluxCoeff) {
+void Mesh::setNumFlux(std::string fluxType, std::vector<double> &a, double fluxCoeff) {
 
     m_numFluxType = fluxType;
     if(m_numFluxType == "average")
@@ -394,7 +394,7 @@ void Mesh::setNumFlux(std::string fluxType, double *a, double fluxCoeff) {
                 elf = lf;
         }
         if(!m_fIsBoundary[f]) {
-            if(elFOrientation(fNbrElId(f, 0), elf)*eigen::dot(a, &fNormal(f), m_Dim) <= 0) {
+            if(elFOrientation(fNbrElId(f, 0), elf)*eigen::dot(a.data(), &fNormal(f), m_Dim) <= 0) {
                 std::swap(m_fNbrElIds[f][0], m_fNbrElIds[f][1]);
                 for(int nf=0; nf<m_fNumNodes; ++nf)
                     std::swap(fNToElNId(f, nf, 0), fNToElNId(f, nf, 1));
@@ -403,10 +403,10 @@ void Mesh::setNumFlux(std::string fluxType, double *a, double fluxCoeff) {
     }
 }
 
-void Mesh::enforceDiricheletBCs(double* u) {
+void Mesh::enforceDiricheletBCs(std::vector<double> &u) {
     for(int n=0; n<m_elNodeDirichelet.size(); ++n)
         u[m_elNodeDirichelet[n].first] = m_elNodeDirichelet[n].second;
-};
+}
 
 // Compute and store normal for each faces
 void Mesh::setFaceNormals() {
@@ -440,22 +440,6 @@ void Mesh::setFaceNormals() {
             m_fNormals.insert(m_fNormals.end(), normal.begin(), normal.end());
         }
     }
-
-    // Plots
-    /*std::vector<double> viewNormals;
-    for(int f=0; f<m_fNum; f++) {
-        for(int g=0; g<m_fNumIntPts; ++g){
-            for(int x=0; x<3; ++x)
-                viewNormals.push_back(fIntPtCoord(f, g, x));
-            for(int x=0; x<3; ++x)
-                viewNormals.push_back(fNormal(f, g, x));
-        }
-    }
-    int normalTag = 1;
-    gmsh::view::add("normals", normalTag);
-    gmsh::view::addListData(normalTag, "VP", m_fNum*m_fNumIntPts, viewNormals);
-    gmsh::view::write(normalTag, "normal.pos");*/
-
 }
 
 // Return the list of nodes for each unique face given a list of node per face and per elements

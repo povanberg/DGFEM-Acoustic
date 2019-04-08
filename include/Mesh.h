@@ -153,9 +153,9 @@ public:
     // Compute and store normal for each faces
     void setFaceNormals();
     // Set and retrieve the element upstream
-    void setNumFlux(std::string fluxType, double *a, double fluxCoeff=0.0);
+    void setNumFlux(std::string fluxType, std::vector<double> &a, double fluxCoeff=0.0);
     // Enforce boundaries conditions
-    void enforceDiricheletBCs(double* u);
+    void enforceDiricheletBCs(std::vector<double> &u);
 
 
 private:

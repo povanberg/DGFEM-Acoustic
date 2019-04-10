@@ -36,16 +36,14 @@ int main(int argc, char **argv)
 
     // Initialize the solution
     std::vector<std::vector<double>> u(4,std::vector<double>(mesh.getNumNodes()));
-    for(int v=0; v<u.size(); v++){
-        for(int n=0; n<mesh.getNumNodes(); n++){
-            std::vector<double> coord, paramCoord;
-            gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
-            // Gaussian for P and 0 for v(x,y,z)
-            u[0][n] = exp(-((coord[0] - 10) * (coord[0] - 10) + (coord[1]+ 0) * (coord[1]- 0) + (coord[2]- 0) * (coord[2]- 0))/1);
-            u[1][n] = 0;
-            u[2][n] = 0;
-            u[3][n] = 0;
-        }
+    for(int n=0; n<mesh.getNumNodes(); n++){
+        std::vector<double> coord, paramCoord;
+        gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
+        // Gaussian for P and 0 for v(x,y,z)
+        u[0][n] = exp(-((coord[0] - 10) * (coord[0] - 10) + (coord[1]+ 0) * (coord[1]- 0) + (coord[2]- 0) * (coord[2]- 0))/1);
+        u[1][n] = 0;
+        u[2][n] = 0;
+        u[3][n] = 0;
     }
 
     // Initialise the physical flux vector

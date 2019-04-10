@@ -5,7 +5,6 @@
 #include <chrono>
 #include <omp.h>
 #include <sstream>
-#include <math.h>
 
 #include "configParser.h"
 #include "Mesh.h"

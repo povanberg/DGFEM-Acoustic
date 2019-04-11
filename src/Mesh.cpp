@@ -210,6 +210,23 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     }
     assert(m_elFOrientation.size() == m_elNum*m_fNumPerEl);
 
+    // Reclassify neighbor element, the first one has the
+    // normal oriented in the same direction as the face.
+    int elf;
+    for(int f=0; f<m_fNum; ++f) {
+        for(int lf=0; lf<m_fNumPerEl; ++lf){
+            if(elFId(fNbrElId(f, 0), lf) == f)
+                elf = lf;
+        }
+        if(m_fNbrElIds.size() == 2) {
+            if(elFOrientation(fNbrElId(f, 0), elf) <= 0) {
+                std::swap(m_fNbrElIds[f][0], m_fNbrElIds[f][1]);
+                for(int nf=0; nf<m_fNumNodes; ++nf)
+                    std::swap(fNToElNId(f, nf, 0), fNToElNId(f, nf, 1));
+            }
+        }
+    }
+
     gmsh::logger::write("------------------------------------------------");
     gmsh::logger::write("Element-Face connectivity sucessfully done.");
 
@@ -307,12 +324,12 @@ void Mesh::getElMassMatrix(const int el, const bool inverse, double *elMassMatri
 // u : solution at element node
 // elStiffMatrix : vector of size [NumNodes*NumNodes] containing at the
 //                output the mass matrix. (row major)
-void Mesh::getElStiffVector(const int el, std::vector<std::vector<double>> &a, std::vector<double> &u, double *elStiffVector) {
+void Mesh::getElStiffVector(const int el, std::vector<std::vector<double>> &Flux, std::vector<double> &u, double *elStiffVector) {
     for(int i=0; i<m_elNumNodes; ++i) {
         elStiffVector[i] = 0.0;
         for (int j = 0; j < m_elNumNodes; ++j) {
             for(int g=0; g<m_elNumIntPts; g++) {
-                elStiffVector[i] += eigen::dot(a[el*m_elNumNodes+j].data(), &elGradBasisFct(el, g, i), m_Dim)*
+                elStiffVector[i] += eigen::dot(Flux[el*m_elNumNodes+j].data(), &elGradBasisFct(el, g, i), m_Dim)*
                                     elBasisFct(g,j)*elWeight(g)*elJacobianDet(el, g);
             }
         }
@@ -324,20 +341,22 @@ void Mesh::getElStiffVector(const int el, std::vector<std::vector<double>> &a, s
 // a : convection vector
 // u : global solution
 // F : at the end return the flux at face node
-void Mesh::getFlux(const int f, std::vector<std::vector<double>> &a, std::vector<double> &u, double* F) {
-    if(m_fIsBoundary[f]) {
-        if(m_fNeumann[f].first)
-            std::fill(F, F+m_fNumNodes, m_fNeumann[f].second);
-    }
-    else {
+void Mesh::getFlux(const int f, std::vector<double> &u, std::vector<std::vector<double>> &Flux, double* F) {
+    if(!m_fIsBoundary[f]) {
+        int elUp, elDn;
+        std::vector<double> Fnum(m_Dim, 0);
         std::vector<double> FIntPts(m_fNumIntPts, 0);
         // Get Flux at gauss points
-        for(int g=0; g<m_fNumIntPts; ++g) {
-            for (int i = 0; i < m_fNumNodes; ++i) {
-                // Lax-friedrich flux
-                FIntPts[g] += fBasisFct(g, i) *
-                              ((2-m_numFluxCoeff)*eigen::dot(&fNormal(f, g), a[fNbrElId(f, 0) * m_elNumNodes + fNToElNId(f, i, 0)].data(), m_Dim) +
-                                  m_numFluxCoeff* eigen::dot(&fNormal(f, g), a[fNbrElId(f, 1) * m_elNumNodes + fNToElNId(f, i, 1)].data(), m_Dim)) / 2.;
+        for (int i = 0; i < m_fNumNodes; ++i) {
+            for(int g=0; g<m_fNumIntPts; ++g) {
+                elUp = fNbrElId(f, 0)*m_elNumNodes + fNToElNId(f, i, 0);
+                elDn = fNbrElId(f, 1)*m_elNumNodes + fNToElNId(f, i, 1);
+                // Numerical flux
+                for(int x=0; x<m_Dim; ++x) {
+                    Fnum[x] = ((Flux[elUp][x]+Flux[elDn][x]) + config.c0*fNormal(f, g, x)*(u[elDn]-u[elUp]))/2.;
+                }
+                // Gauss points flux
+                FIntPts[g] += eigen::dot(&fNormal(f, g), Fnum.data(), m_Dim) * fBasisFct(g, i);
             }
         }
         // Surface integral
@@ -351,11 +370,11 @@ void Mesh::getFlux(const int f, std::vector<std::vector<double>> &a, std::vector
 }
 
 // Precompute the flux through all surfaces
-void Mesh::precomputeFlux(std::vector<std::vector<double>> &a, std::vector<double> &u) {
+void Mesh::precomputeFlux(std::vector<double> &u, std::vector<std::vector<double>> &Flux) {
     m_fFlux.resize(m_fNum*m_fNumNodes);
     #pragma omp parallel for schedule(static) num_threads(config.numThreads)
     for(int f=0; f<m_fNum; ++f) {
-        getFlux(f, a, u, &fFlux(f));
+        getFlux(f, u, Flux, &fFlux(f));
     }
 }
 
@@ -371,27 +390,6 @@ void Mesh::getElFlux(const int el, double* F) {
         for(int nf=0; nf<m_fNumNodes; ++nf) {
             F[fNToElNId(elFId(el, f), nf, i)] += elFOrientation(el, f)*fFlux(elFId(el, f), nf);
         }
-    }
-}
-
-// Set numerical flux type and correpsonding coefficient in lax-friedrich formula.
-// Reclassify correctly neighbor elements with respect to the flux direction.
-// NbrEl 0 : upstream and NbrEl 1 : downstream
-void Mesh::setNumFlux(std::string fluxType, double fluxCoeff) {
-
-    m_numFluxType = fluxType;
-    if(m_numFluxType == "average")
-        m_numFluxCoeff = 1;
-    else if(m_numFluxType == "upwind")
-        m_numFluxCoeff = 0;
-    else
-        m_numFluxCoeff = fluxCoeff;
-}
-
-void Mesh::enforceDiricheletBCs(std::vector<std::vector<double>> &u) {
-    for(int v=0; v<u.size(); ++v){
-        for(int n=0; n<m_elNodeDirichelet.size(); ++n)
-            u[v][m_elNodeDirichelet[n].first] = m_elNodeDirichelet[n].second;
     }
 }
 
@@ -467,18 +465,5 @@ void Mesh::getUniqueFaceNodeTags() {
             it_ordered+=m_fNumNodes;
             it_unordered+=m_fNumNodes;
         }
-    }
-}
-
-// Updates the physical flux a(u)
-void Mesh::updateFlux(std::vector<std::vector<std::vector<double>>> &a, std::vector<std::vector<double>> &u){
-    double c0 = 1;
-    double rho0 = 1;
-    double v0x = 0, v0y = 0, v0z = 0;
-    for(int i=0; i<m_elNodeTags.size(); ++i){
-        a[0][i] = {v0x*u[0][i]/(c0*c0)+rho0*u[1][i], v0y*u[0][i]/(c0*c0)+rho0*u[2][i], v0z*u[0][i]/(c0*c0)+rho0*u[3][i]};
-        a[1][i] = {u[1][i]*v0x+u[0][i]/rho0, u[1][i]*v0y, u[1][i]*v0z};
-        a[2][i] = {u[2][i]*v0x, u[2][i]*v0y+u[0][i]/rho0, u[2][i]*v0z};
-        a[3][i] = {u[3][i]*v0x, u[3][i]*v0y, u[3][i]*v0z+u[0][i]/rho0};
     }
 }

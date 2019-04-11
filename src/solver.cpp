@@ -22,33 +22,9 @@ namespace solver {
     int g_viewTag;
     std::vector<std::string> g_names;
 
-    void updateFlux(std::vector<std::vector<double>> &u,
-                    std::vector<double> &v0, double c0, double rho0) {
+    void numStep(Mesh &mesh, Config config, std::vector<double> &u, std::vector<std::vector<double>> &Flux, double beta, int eq){
 
-        for(int i=0; i<numNodes; ++i){
-
-                // Pressure flux
-                Flux[0][i] = {v0[0]*u[0][i] + rho0*c0*c0*u[1][i],
-                              v0[1]*u[0][i] + rho0*c0*c0*u[2][i],
-                              v0[2]*u[0][i] + rho0*c0*c0*u[3][i]};
-                // Vx
-                Flux[1][i] = {v0[0]*u[1][i] + u[0][i]/rho0,
-                              v0[1]*u[1][i],
-                              v0[2]*u[1][i]};
-                // Vy
-                Flux[2][i] = {v0[0]*u[2][i],
-                              v0[1]*u[2][i] + u[0][i]/rho0,
-                              v0[2]*u[2][i]};
-                // Vz
-                Flux[3][i] = {v0[0]*u[3][i],
-                              v0[1]*u[3][i],
-                              v0[2]*u[3][i] + u[0][i]/rho0};
-        }
-    }
-
-    void numStep(Mesh &mesh, Config config, std::vector<double> &u, std::vector<std::vector<double>> &Flux, double beta){
-
-        mesh.precomputeFlux(u, Flux);
+        mesh.precomputeFlux(u, Flux, eq);
 
         #pragma omp parallel for schedule(static) firstprivate(elFlux, elStiffvector) num_threads(config.numThreads)
         for(int el=0; el<mesh.getElNum(); ++el){
@@ -154,38 +130,40 @@ namespace solver {
             }
 
             // Source
-            double s_freq = 0.5;
-            std::vector<double> s_coord = {10, 0, 0};
-            std::vector<double> s_size = {0.2, 0.2, 0.1};
-            for(int n=0; n<mesh.getNumNodes(); n++) {
-                std::vector<double> coord, paramCoord;
-                gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
-                if(abs(coord[0]-s_coord[0])<s_size[0] &&
-                   abs(coord[1]-s_coord[1])<s_size[1]) {
-                    u[0][n] = sin(6.28*s_freq*t);
+            if(t<5) {
+                double s_freq = 4;
+                std::vector<double> s_coord = {5, 5, 0};
+                std::vector<double> s_size = {0.2, 0.2, 0.1};
+                for(int n=0; n<mesh.getNumNodes(); n++) {
+                    std::vector<double> coord, paramCoord;
+                    gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
+                    if(abs(coord[0]-s_coord[0])<s_size[0] &&
+                       abs(coord[1]-s_coord[1])<s_size[1]) {
+                        u[0][n] = sin(6.28*s_freq*t);
+                    }
                 }
             }
 
             // Fourth order Runge-Kutta algorithm
             k1 = k2 = k3 = k4 = u;
-            updateFlux(k1, config.v0, config.c0, config.rho0);
+            mesh.updateFlux(k1, Flux, config.v0, config.c0, config.rho0);
             for(int v=0; v<u.size(); ++v){
-                numStep(mesh, config, k1[v], Flux[v], 0); // k1
+                numStep(mesh, config, k1[v], Flux[v], 0, v); // k1
                 eigen::plusTimes(k2[v].data(), k1[v].data(), 0.5, numNodes);
             }
-            updateFlux(k2, config.v0, config.c0, config.rho0);
+            mesh.updateFlux(k2, Flux, config.v0, config.c0, config.rho0);
             for(int v=0; v<u.size(); ++v){
-                numStep(mesh, config, k2[v], Flux[v], 0); // k2
+                numStep(mesh, config, k2[v], Flux[v], 0, v); // k2
                 eigen::plusTimes(k3[v].data(), k2[v].data(), 0.5, numNodes);
             }
-            updateFlux(k3, config.v0, config.c0, config.rho0);
+            mesh.updateFlux(k3, Flux, config.v0, config.c0, config.rho0);
             for(int v=0; v<u.size(); ++v){
-                numStep(mesh, config, k3[v], Flux[v], 0); // k3
+                numStep(mesh, config, k3[v], Flux[v], 0, v); // k3
                 eigen::plusTimes(k4[v].data(), k3[v].data(), 1.0, numNodes);
             }
-            updateFlux(k4, config.v0, config.c0, config.rho0);
+            mesh.updateFlux(k4, Flux, config.v0, config.c0, config.rho0);
             for(int v=0; v<u.size(); ++v){
-                numStep(mesh, config, k4[v], Flux[v], 0); // k4
+                numStep(mesh, config, k4[v], Flux[v], 0, v); // k4
                 for(int i=0; i<numNodes; ++i){
                     u[v][i] += (k1[v][i]+2*k2[v][i]+2*k3[v][i]+k4[v][i])/6.0;
                 }

@@ -3,10 +3,10 @@ $MeshFormat
 $EndMeshFormat
 $PhysicalNames
 5
-1 1 "leftSurface"
-1 2 "topSurface"
-1 3 "bottomSurface"
-1 4 "rightSurface"
+1 1 "Absorbing"
+1 2 "Absorbing"
+1 3 "Absorbing"
+1 4 "Absorbing"
 2 5 "Domain"
 $EndPhysicalNames
 $Entities

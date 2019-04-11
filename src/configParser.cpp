@@ -58,6 +58,12 @@ namespace config{
                     double valueBC = std::stod(configMap[physName].substr(7));
                     config.physBCs[m_physicalDimTags[p].second] = std::make_pair("Neumann", valueBC);
                 }
+                else if (configMap[physName].find("Absorbing") == 0) {
+                    config.physBCs[m_physicalDimTags[p].second] = std::make_pair("Absorbing", 0);
+                }
+                else if (configMap[physName].find("Reflecting") == 0) {
+                    config.physBCs[m_physicalDimTags[p].second] = std::make_pair("Reflecting", 0);
+                }
                 else {
                     gmsh::logger::write("Not specified or supported boundary conditions.");
                 }

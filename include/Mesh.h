@@ -143,16 +143,18 @@ public:
     // Compute the element stiffness/convection matrix
     void getElStiffVector(const int el, std::vector<std::vector<double>> &Flux, std::vector<double> &u, double *elStiffVector);
     // Compute Numerical Flux through surface  'f'
-    void getFlux(const int f, std::vector<double> &u, std::vector<std::vector<double>> &Flux, double* F);
+    void getFlux(const int f, std::vector<double> &u, std::vector<std::vector<double>> &Flux, double* F, int eq);
     // Precompute and store the flux through all surfaces
-    void precomputeFlux(std::vector<double> &u, std::vector<std::vector<double>> &Flux);
+    void precomputeFlux(std::vector<double> &u, std::vector<std::vector<double>> &Flux, int eq);
     // Compute Numerical Flux through element 'el'
     void getElFlux(const int el, double* F);
     // Return the list of nodes for each unique face given a list of node per face and per elements
     void getUniqueFaceNodeTags();
     // Compute and store normal for each faces
     void setFaceNormals();
-    void updateGhostElements(std::vector<std::vector<double>> &u);
+    void updateFlux(std::vector<std::vector<double>> &u, std::vector<std::vector<std::vector<double>>> &Flux,
+                    std::vector<double> &v0, double c0, double rho0);
+    void init();
 
 private:
     std::string name;
@@ -283,15 +285,10 @@ private:
     // [f1n1, f1n2, ..., f2n1, f2n2, ...]
     std::vector<double> m_fFlux;
 
-    // Dirichelet boundary conditions
-    // int = node id in assembled solution vector
-    // double = value of dirichelet BCs
-    std::vector<std::pair<int, double>> m_elNodeDirichelet;
-    // Neumann flux boundary conditions
-    // bool = is face a Neumann BC
-    // double = value of Neumann BC
-    // NB: By convention the normal points outward domain.
-    std::vector<std::pair<bool, double>> m_fNeumann;
+    std::vector<std::vector<double>> uGhost;
+    std::vector<std::vector<std::vector<double>>> FluxGhost;
+
+    std::vector<int> m_fBC;
 
 };
 

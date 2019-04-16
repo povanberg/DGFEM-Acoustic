@@ -154,7 +154,6 @@ public:
     void setFaceNormals();
     void updateFlux(std::vector<std::vector<double>> &u, std::vector<std::vector<std::vector<double>>> &Flux,
                     std::vector<double> &v0, double c0, double rho0);
-    void init();
 
 private:
     std::string name;

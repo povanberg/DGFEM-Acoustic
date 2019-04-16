@@ -284,7 +284,12 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     gmsh::logger::write("Boundary conditions sucessfuly loaded.");
     gmsh::logger::write("------------------------------------------------");
 
-    this->init();
+    m_fFlux.resize(m_fNum*m_fNumNodes);
+    uGhost = std::vector<std::vector<double>>(4,
+             std::vector<double>(getNumNodes()));
+    FluxGhost = std::vector<std::vector<std::vector<double>>>(4,
+                std::vector<std::vector<double>>(getNumNodes(),
+                std::vector<double>(3)));
 }
 
 // Precompute and store the mass matris for all elements in m_elMassMatrix
@@ -403,18 +408,6 @@ void Mesh::getElFlux(const int el, double* F) {
         }
     }
 }
-
-void Mesh::init() {
-
-    m_fFlux.resize(m_fNum*m_fNumNodes);
-
-    uGhost = std::vector<std::vector<double>>(4,
-             std::vector<double>(getNumNodes()));
-    FluxGhost = std::vector<std::vector<std::vector<double>>>(4,
-                std::vector<std::vector<double>>(getNumNodes(),
-                std::vector<double>(3)));
-};
-
 
 void Mesh::updateFlux(std::vector<std::vector<double>> &u, std::vector<std::vector<std::vector<double>>> &Flux,
                       std::vector<double> &v0, double c0, double rho0) {

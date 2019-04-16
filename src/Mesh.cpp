@@ -337,60 +337,55 @@ void Mesh::getElStiffVector(const int el, std::vector<std::vector<double>> &Flux
     }
 }
 
-// Compute numerical flux through surface 'f'
-// fId : id of the face
-// a : convection vector
-// u : global solution
-// F : at the end return the flux at face node
-void Mesh::getFlux(const int f, std::vector<double> &u, std::vector<std::vector<double>> &Flux, double* F, int eq) {
-    int elUp, elDn;
-    std::vector<double> FIntPts(m_fNumIntPts, 0);
-    std::vector<double> Fnum(m_fDim, 0);
-    if(m_fIsBoundary[f]) {
-        if(m_fBC[f] == 1) {
-            for (int i = 0; i < m_fNumNodes; ++i) {
-                elUp = fNbrElId(f, 0)*m_elNumNodes + fNToElNId(f, i, 0);
-                for(int g=0; g<m_fNumIntPts; ++g) {
-                    for(int x=0; x<m_Dim; ++x)
-                        Fnum[x] = (Flux[elUp][x]+FluxGhost[eq][elUp][x])/2.;
-                    FIntPts[g] += eigen::dot(&fNormal(f, g), Fnum.data(), m_Dim) * fBasisFct(g, i);
-                }
-            }
-        }
-        else {
-            for (int i = 0; i < m_fNumNodes; ++i) {
-                elUp = fNbrElId(f, 0)*m_elNumNodes + fNToElNId(f, i, 0);
-                for(int g=0; g<m_fNumIntPts; ++g) {
-                    FIntPts[g] += eigen::dot(&fNormal(f, g), &Flux[elUp][0], m_Dim) * fBasisFct(g, i);
-                }
-            }
-        }
-    }
-    else {
-        for (int i = 0; i < m_fNumNodes; ++i) {
-            elUp = fNbrElId(f, 0)*m_elNumNodes + fNToElNId(f, i, 0);
-            elDn = fNbrElId(f, 1)*m_elNumNodes + fNToElNId(f, i, 1);
-            for(int g=0; g<m_fNumIntPts; ++g) {
-                for(int x=0; x<m_Dim; ++x)
-                    Fnum[x] = ((Flux[elUp][x]+Flux[elDn][x]) + config.c0*fNormal(f, g, x)*(u[elDn]-u[elUp]))/2.;
-                FIntPts[g] += eigen::dot(&fNormal(f, g), Fnum.data(), m_Dim) * fBasisFct(g, i);
-            }
-        }
-    }
-    // Surface integral
-    for(int n=0; n<m_fNumNodes; ++n) {
-        F[n] = 0;
-        for(int g=0; g<m_fNumIntPts; ++g) {
-            F[n] += fWeight(g)*fBasisFct(g, n)*FIntPts[g]*fJacobianDet(f, g);
-        }
-    }
-}
-
 // Precompute the flux through all surfaces
 void Mesh::precomputeFlux(std::vector<double> &u, std::vector<std::vector<double>> &Flux, int eq) {
-    #pragma omp parallel for schedule(static) num_threads(config.numThreads)
-    for(int f=0; f<m_fNum; ++f) {
-        getFlux(f, u, Flux, &fFlux(f), eq);
+
+    #pragma omp parallel num_threads(config.numThreads)
+    {
+        int elUp, elDn;
+        std::vector<double> FIntPts(m_fNumIntPts, 0);
+        std::vector<double> Fnum(m_fDim, 0);
+        #pragma omp parallel for schedule(static)
+        for(int f=0; f<m_fNum; ++f) {
+            std::fill(FIntPts.begin(), FIntPts.end(), 0);
+            if (m_fIsBoundary[f]) {
+                if (m_fBC[f] == 1) {
+                    for (int i = 0; i < m_fNumNodes; ++i) {
+                        elUp = fNbrElId(f, 0) * m_elNumNodes + fNToElNId(f, i, 0);
+                        for (int g = 0; g < m_fNumIntPts; ++g) {
+                            for (int x = 0; x < m_Dim; ++x)
+                                Fnum[x] = (Flux[elUp][x] + FluxGhost[eq][elUp][x]) / 2.;
+                            FIntPts[g] += eigen::dot(&fNormal(f, g), Fnum.data(), m_Dim) * fBasisFct(g, i);
+                        }
+                    }
+                } else {
+                    for (int i = 0; i < m_fNumNodes; ++i) {
+                        elUp = fNbrElId(f, 0) * m_elNumNodes + fNToElNId(f, i, 0);
+                        for (int g = 0; g < m_fNumIntPts; ++g) {
+                            FIntPts[g] += eigen::dot(&fNormal(f, g), &Flux[elUp][0], m_Dim) * fBasisFct(g, i);
+                        }
+                    }
+                }
+            } else {
+                for (int i = 0; i < m_fNumNodes; ++i) {
+                    elUp = fNbrElId(f, 0) * m_elNumNodes + fNToElNId(f, i, 0);
+                    elDn = fNbrElId(f, 1) * m_elNumNodes + fNToElNId(f, i, 1);
+                    for (int g = 0; g < m_fNumIntPts; ++g) {
+                        for (int x = 0; x < m_Dim; ++x)
+                            Fnum[x] = ((Flux[elUp][x] + Flux[elDn][x]) +
+                                       config.c0 * fNormal(f, g, x) * (u[elDn] - u[elUp])) / 2.;
+                        FIntPts[g] += eigen::dot(&fNormal(f, g), Fnum.data(), m_Dim) * fBasisFct(g, i);
+                    }
+                }
+            }
+            // Surface integral
+            for (int n = 0; n < m_fNumNodes; ++n) {
+                fFlux(f, n) = 0;
+                for (int g = 0; g < m_fNumIntPts; ++g) {
+                    fFlux(f, n) += fWeight(g) * fBasisFct(g, n) * FIntPts[g] * fJacobianDet(f, g);
+                }
+            }
+        }
     }
 }
 

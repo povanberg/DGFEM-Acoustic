@@ -67,7 +67,7 @@ public:
     inline int& fNodeTagOrdered(int f, int i=0) {
         return m_fNodeTagsOrdered[f*m_fNumNodes + i];
     };
-    // Getter : (f, g, i, j) -> dx_i/du_j(g) at int point 'g' for face 'f'.
+    // Getter : (f, g, i, j) -> dx_i/du_j(g) aFnumt int point 'g' for face 'f'.
     inline double& fJacobian(int f, int g=0, int x=0, int u=0) {
         return m_fJacobians[f*m_fNumIntPts*9 + g*9 + u*3 + x];
     };
@@ -142,8 +142,6 @@ public:
     void precomputeMassMatrix();
     // Compute the element stiffness/convection matrix
     void getElStiffVector(const int el, std::vector<std::vector<double>> &Flux, std::vector<double> &u, double *elStiffVector);
-    // Compute Numerical Flux through surface  'f'
-    void getFlux(const int f, std::vector<double> &u, std::vector<std::vector<double>> &Flux, double* F, int eq);
     // Precompute and store the flux through all surfaces
     void precomputeFlux(std::vector<double> &u, std::vector<std::vector<double>> &Flux, int eq);
     // Compute Numerical Flux through element 'el'
@@ -288,6 +286,10 @@ private:
     std::vector<std::vector<std::vector<double>>> FluxGhost;
 
     std::vector<int> m_fBC;
+
+    int elUp, elDn;
+    std::vector<double> FIntPts;
+    std::vector<double> Fnum;
 
 };
 

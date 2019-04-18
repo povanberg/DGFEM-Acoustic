@@ -344,7 +344,7 @@ void Mesh::precomputeFlux(std::vector<double> &u, std::vector<std::vector<double
     {
         int elUp, elDn;
         std::vector<double> FIntPts(m_fNumIntPts, 0);
-        std::vector<double> Fnum(m_fDim, 0);
+        std::vector<double> Fnum(m_Dim, 0);
         #pragma omp parallel for schedule(static)
         for(int f=0; f<m_fNum; ++f) {
             std::fill(FIntPts.begin(), FIntPts.end(), 0);

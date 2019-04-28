@@ -287,9 +287,7 @@ private:
 
     std::vector<int> m_fBC;
 
-    int elUp, elDn;
-    std::vector<double> FIntPts;
-    std::vector<double> Fnum;
+    std::vector<std::vector<double>> RKR;
 
 };
 

@@ -31,29 +31,24 @@ int main(int argc, char **argv)
     // Retrieve parameters required to run the Discontinuous Galerkin simulation.
     Mesh mesh(msh_name, config);
 
-    // Physical flux vector a[variable][node][dimension]
-    std::vector<std::vector<std::vector<double>>> a(4,std::vector<std::vector<double>>(mesh.getNumNodes(),std::vector<double>(3)));
-
     // Initialize the solution
     std::vector<std::vector<double>> u(4,std::vector<double>(mesh.getNumNodes()));
     for(int n=0; n<mesh.getNumNodes(); n++){
         std::vector<double> coord, paramCoord;
         gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
         // Gaussian for P and 0 for v(x,y,z)
-        u[0][n] = exp(-((coord[0] - 10) * (coord[0] - 10) + (coord[1]+ 0) * (coord[1]- 0) + (coord[2]- 0) * (coord[2]- 0))/1);
+        u[0][n] = exp(-((coord[0] - 0) * (coord[0] - 0) + (coord[1]- 0) * (coord[1] - 0) + (coord[2]- 0) * (coord[2]- 0))/1);
+        //u[0][n] = 0;
         u[1][n] = 0;
         u[2][n] = 0;
         u[3][n] = 0;
     }
 
-    // Initialise the physical flux vector
-    mesh.updateFlux(a, u);
-
     // Solver
-    if(config.timeIntMethod == "Euler1")
-        solver::forwardEuler(u, a, mesh, config);
-    else if(config.timeIntMethod == "Runge-Kutta")
-        solver::rungeKutta(u, a, mesh, config);
+    /*if(config.timeIntMethod == "Euler1")
+        solver::forwardEuler(u, mesh, config);
+    else if(config.timeIntMethod == "Runge-Kutta")*/
+        solver::rungeKutta(u, mesh, config);
 
     gmsh::finalize();
 

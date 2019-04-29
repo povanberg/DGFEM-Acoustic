@@ -67,7 +67,7 @@ public:
     inline int& fNodeTagOrdered(int f, int i=0) {
         return m_fNodeTagsOrdered[f*m_fNumNodes + i];
     };
-    // Getter : (f, g, i, j) -> dx_i/du_j(g) at int point 'g' for face 'f'.
+    // Getter : (f, g, i, j) -> dx_i/du_j(g) aFnumt int point 'g' for face 'f'.
     inline double& fJacobian(int f, int g=0, int x=0, int u=0) {
         return m_fJacobians[f*m_fNumIntPts*9 + g*9 + u*3 + x];
     };
@@ -141,24 +141,17 @@ public:
     // Precompute and store the mass matris for all elements in m_elMassMatrix
     void precomputeMassMatrix();
     // Compute the element stiffness/convection matrix
-    void getElStiffVector(const int el, std::vector<std::vector<double>> &a, std::vector<double> &u, double *elStiffVector);
-    // Compute Numerical Flux through surface  'f'
-    void getFlux(const int f, std::vector<std::vector<double>> &a, std::vector<double> &u, double* F);
+    void getElStiffVector(const int el, std::vector<std::vector<double>> &Flux, std::vector<double> &u, double *elStiffVector);
     // Precompute and store the flux through all surfaces
-    void precomputeFlux(std::vector<std::vector<double>> &a, std::vector<double> &u);
+    void precomputeFlux(std::vector<double> &u, std::vector<std::vector<double>> &Flux, int eq);
     // Compute Numerical Flux through element 'el'
     void getElFlux(const int el, double* F);
     // Return the list of nodes for each unique face given a list of node per face and per elements
     void getUniqueFaceNodeTags();
     // Compute and store normal for each faces
     void setFaceNormals();
-    // Set and retrieve the element upstream
-    void setNumFlux(std::string fluxType, double fluxCoeff=0.0);
-    // Enforce boundaries conditions
-    void enforceDiricheletBCs(std::vector<std::vector<double>> &u);
-    // Updates the physical flux
-    void updateFlux(std::vector<std::vector<std::vector<double>>> &a, std::vector<std::vector<double>> &u);
-
+    void updateFlux(std::vector<std::vector<double>> &u, std::vector<std::vector<std::vector<double>>> &Flux,
+                    std::vector<double> &v0, double c0, double rho0);
 
 private:
     std::string name;
@@ -289,21 +282,12 @@ private:
     // [f1n1, f1n2, ..., f2n1, f2n2, ...]
     std::vector<double> m_fFlux;
 
-    // Numeric flux type
-    std::string m_numFluxType;
-    // Numeric flux coefficient: k
-    // Lax-Friedrich: (u- + u+)/2 + |a|(1-k)/2(u+ - u-)
-    double m_numFluxCoeff;
+    std::vector<std::vector<double>> uGhost;
+    std::vector<std::vector<std::vector<double>>> FluxGhost;
 
-    // Dirichelet boundary conditions
-    // int = node id in assembled solution vector
-    // double = value of dirichelet BCs
-    std::vector<std::pair<int, double>> m_elNodeDirichelet;
-    // Neumann flux boundary conditions
-    // bool = is face a Neumann BC
-    // double = value of Neumann BC
-    // NB: By convention the normal points outward domain.
-    std::vector<std::pair<bool, double>> m_fNeumann;
+    std::vector<int> m_fBC;
+
+    std::vector<std::vector<double>> RKR;
 
 };
 

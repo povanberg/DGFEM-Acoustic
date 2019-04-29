@@ -13,23 +13,24 @@ namespace solver {
 
     // Common variables to all solver
     int elNumNodes;
-    int Numnodes;
+    int numNodes;
     std::vector<int> elTags;
     std::vector<double> elFlux;
     std::vector<double> elStiffvector;
+    std::vector<std::vector<std::vector<double>>> Flux;
     // Gmsh
     int g_viewTag;
     std::vector<std::string> g_names;
 
-    void numStep(Mesh &mesh, Config config, std::vector<double> &u, std::vector<std::vector<double>> &a, double beta){
+    void numStep(Mesh &mesh, Config config, std::vector<double> &u, std::vector<std::vector<double>> &Flux, double beta, int eq){
 
-        mesh.precomputeFlux(a, u);
+        mesh.precomputeFlux(u, Flux, eq);
 
         #pragma omp parallel for schedule(static) firstprivate(elFlux, elStiffvector) num_threads(config.numThreads)
         for(int el=0; el<mesh.getElNum(); ++el){
 
             mesh.getElFlux(el, elFlux.data());
-            mesh.getElStiffVector(el, a, u, elStiffvector.data());
+            mesh.getElStiffVector(el, Flux, u, elStiffvector.data());
             eigen::minus(elStiffvector.data(), elFlux.data(), elNumNodes);
             eigen::linEq(&mesh.elMassMatrix(el), &elStiffvector[0], &u[el*elNumNodes],
                         config.timeStep, beta, elNumNodes);
@@ -41,7 +42,7 @@ namespace solver {
     // a : convection vector          |   config : ...
     void forwardEuler(std::vector<std::vector<double>> &u, std::vector<std::vector<std::vector<double>>> &a, Mesh &mesh, Config config) {
 
-        elNumNodes = mesh.getElNumNodes();
+        /*elNumNodes = mesh.getElNumNodes();
         Numnodes = mesh.getNumNodes();
         elTags = std::vector<int>(&mesh.elTag(0), &mesh.elTag(0)+mesh.getElNum());
         elFlux.resize(elNumNodes);
@@ -80,33 +81,35 @@ namespace solver {
             mesh.enforceDiricheletBCs(u);
             mesh.updateFlux(a, u);
         }
-        gmsh::view::write(g_viewTag, "data.msh");
+        gmsh::view::write(g_viewTag, "data.msh");*/
     }
 
     // Solve using explicit Runge-Kutta integration method. O(h^4)
     // u : initial solution vector    |   mesh   : ...
     // a : convection vector          |   config : ...
-    void rungeKutta(std::vector<std::vector<double>> &u, std::vector<std::vector<std::vector<double>>> &a, Mesh &mesh, Config config) {
+    void rungeKutta(std::vector<std::vector<double>> &u, Mesh &mesh, Config config) {
 
+        // Memory allocation
         elNumNodes = mesh.getElNumNodes();
-        Numnodes = mesh.getNumNodes();
+        numNodes = mesh.getNumNodes();
         elTags = std::vector<int>(&mesh.elTag(0), &mesh.elTag(0)+mesh.getElNum());
         elFlux.resize(elNumNodes);
         elStiffvector.resize(elNumNodes);
+        std::vector<std::vector<double>> k1, k2, k3, k4;
+        Flux = std::vector<std::vector<std::vector<double>>>(4,
+               std::vector<std::vector<double>>(mesh.getNumNodes(),
+               std::vector<double>(3)));
 
+        // Gmsh save
         g_viewTag = gmsh::view::add("Results");
         gmsh::model::list(g_names);
         std::vector<std::vector<double>> g_u(mesh.getElNum(), std::vector<double>(elNumNodes));
-        std::vector<std::vector<double>> k1;
-        std::vector<std::vector<double>> k2;
-        std::vector<std::vector<double>> k3;
-        std::vector<std::vector<double>> k4;
 
+        // Precomputation
         mesh.precomputeMassMatrix();
-        mesh.setNumFlux(config.flux, config.fluxCoeff);
 
+        // Time iteration
         auto start = std::chrono::system_clock::now();
-
         for(double t=config.timeStart, tDisplay=0, step=0;
             t<=config.timeEnd;
             t+=config.timeStep, tDisplay+=config.timeStep, ++step) {
@@ -125,33 +128,49 @@ namespace solver {
                 gmsh::logger::write("[" + std::to_string(t) + "/" + std::to_string(config.timeEnd) + "s] Step number : "
                                     + std::to_string((int) step) + ", Elapsed time: " + std::to_string(elapsed.count()) +"s");
             }
+/*
+            // Source
+            if(t<5) {
+                double s_freq = 1;
+                std::vector<double> s_coord = {0, 0, 0};
+                std::vector<double> s_size = {0.3, 0.3, 0.3};
+                for(int n=0; n<mesh.getNumNodes(); n++) {
+                    std::vector<double> coord, paramCoord;
+                    gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
+                    if(abs(coord[0]-s_coord[0])<s_size[0] &&
+                       abs(coord[1]-s_coord[1])<s_size[1] &&
+                       abs(coord[2]-s_coord[2])<s_size[2]) {
+                        u[0][n] = sin(6.28*s_freq*t);
+                    }
+                }
+            }*/
 
             // Fourth order Runge-Kutta algorithm
             k1 = k2 = k3 = k4 = u;
+            mesh.updateFlux(k1, Flux, config.v0, config.c0, config.rho0);
             for(int v=0; v<u.size(); ++v){
-                numStep(mesh, config, k1[v], a[v], 0); // k1
-                eigen::plusTimes(k2[v].data(), k1[v].data(), 0.5, Numnodes);
+                numStep(mesh, config, k1[v], Flux[v], 0, v); // k1
+                eigen::plusTimes(k2[v].data(), k1[v].data(), 0.5, numNodes);
             }
-            mesh.updateFlux(a, k2);
+            mesh.updateFlux(k2, Flux, config.v0, config.c0, config.rho0);
             for(int v=0; v<u.size(); ++v){
-                numStep(mesh, config, k2[v], a[v], 0); // k2
-                eigen::plusTimes(k3[v].data(), k2[v].data(), 0.5, Numnodes);
+                numStep(mesh, config, k2[v], Flux[v], 0, v); // k2
+                eigen::plusTimes(k3[v].data(), k2[v].data(), 0.5, numNodes);
             }
-            mesh.updateFlux(a, k3);
+            mesh.updateFlux(k3, Flux, config.v0, config.c0, config.rho0);
             for(int v=0; v<u.size(); ++v){
-                numStep(mesh, config, k3[v], a[v], 0); // k3
-                eigen::plusTimes(k4[v].data(), k3[v].data(), 1.0, Numnodes);
+                numStep(mesh, config, k3[v], Flux[v], 0, v); // k3
+                eigen::plusTimes(k4[v].data(), k3[v].data(), 1.0, numNodes);
             }
-            mesh.updateFlux(a, k4);
+            mesh.updateFlux(k4, Flux, config.v0, config.c0, config.rho0);
             for(int v=0; v<u.size(); ++v){
-                numStep(mesh, config, k4[v], a[v], 0); // k4
-                for(int i=0; i<Numnodes; ++i){
+                numStep(mesh, config, k4[v], Flux[v], 0, v); // k4
+                for(int i=0; i<numNodes; ++i){
                     u[v][i] += (k1[v][i]+2*k2[v][i]+2*k3[v][i]+k4[v][i])/6.0;
                 }
             }
-            mesh.enforceDiricheletBCs(u);
-            mesh.updateFlux(a, u);
+
         }
-        gmsh::view::write(g_viewTag, "data.msh");
+        gmsh::view::write(g_viewTag, config.saveFile);
     }
 }

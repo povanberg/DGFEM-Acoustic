@@ -145,22 +145,6 @@ namespace solver {
                 }
             }*/
 
-            // Source
-            if(t<5) {
-                double s_freq = 1;
-                std::vector<double> s_coord = {0, 0, 0};
-                std::vector<double> s_size = {0.3, 0.3, 0.3};
-                for(int n=0; n<mesh.getNumNodes(); n++) {
-                    std::vector<double> coord, paramCoord;
-                    gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
-                    if(abs(coord[0]-s_coord[0])<s_size[0] &&
-                       abs(coord[1]-s_coord[1])<s_size[1] &&
-                       abs(coord[2]-s_coord[2])<s_size[2]) {
-                        u[0][n] = sin(6.28*s_freq*t);
-                    }
-                }
-            }
-
             // Fourth order Runge-Kutta algorithm
             k1 = k2 = k3 = k4 = u;
             mesh.updateFlux(k1, Flux, config.v0, config.c0, config.rho0);

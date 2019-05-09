@@ -15,7 +15,7 @@ if [ $? -eq 0 ]; then
 	echo "mCmake found.";
 else
 	echo "Cmake not found, installing...";
-	apt-get install cmake;
+	apt-get -y install cmake;
 	echo "Cmake installed.";
 fi
 
@@ -24,7 +24,7 @@ if [ $? -eq 0 ]; then
 	echo "G++ found.";
 else
 	echo "G++ not found, installing...";
-	apt-get install g++;
+	apt-get -y install g++;
 	export CC=gcc;
 	export CXX=g++;
 	echo "G++ installed.";
@@ -35,7 +35,7 @@ if [ $? -eq 0 ]; then
 	echo "Gfortran found.";
 else
 	echo "Gfortran not found, installing...";
-	apt-get install gfortran;
+	apt-get -y install gfortran;
 	echo "Gfortran installed.";
 fi
 
@@ -44,7 +44,7 @@ if [ $? -eq 0 ]; then
 	echo "Lapack/Blas found.";
 else
 	echo "Lapack/Blas not found, installing...";
-	apt-get install libblas-dev liblapack-dev;
+	apt-get -y install libblas-dev liblapack-dev;
 	echo "Lapack/Blas installed.";
 fi
 

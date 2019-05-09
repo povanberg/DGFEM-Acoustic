@@ -1,15 +1,21 @@
-# MATH0471-DG
-This project is proposed as part of the course: multiphysics integrated computational project ([MATH 0471](http://www.montefiore.ulg.ac.be/~geuzaine/MATH0471/)) at Uliège university, spring 2019.
+# Discontinuous Galerkin Method for Acoustic Wave Propagation
 
-## Introduction
+This repository implements a discontinuous Galerkin finite element medthod (DGFEM) applied to the linearized Euler equations and the acoustic perturbation equations. The solver is based on [GMSH](http://gmsh.info/) library and supports a wide range of features:
 
-This  project  consists  in  studying  a  hyperbolic  system  of  equations  in  its  conservation form.   Spatial  discretization  is  performed  using  the  Discontinuous  Galerkin  (DG) method  and  Lagrange  nodal  basis  functions  on  unstructured  meshes. Time integration is performed using time marching methods. (Euler, Runge-Kutta)
+- 1D, 2D, 3D problems
+- 4-th order Runge-Kutta
+- High order elements
+- Absorbing and reflecting boundaries
+- Complex geometry and unstructured grid
 
-## Compilation
+For more information, a detailled report is available here(soon).
 
-### Libraries
+## Getting Started
 
-First, make sure the following libraries are installed and the corresponding path are correctly exported.
+### Prerequisites
+
+First, make sure the following libraries are installed. If you are running a linux distribution (ubuntu, debian, ...), an installation [script](https://github.com/pvanberg/MATH0471-DG/blob/master/build.sh) is provided. 
+
 ```
 Gmsh
 Eigen
@@ -18,7 +24,7 @@ Blas
 OpenMP
 ```
 
-### Build
+### Installing
 
 ```
 git clone https://github.com/pvanberg/MATH0471-DG.git
@@ -27,8 +33,9 @@ mkdir build && cd build
 cmake .. && make -j4
 ```
 
-### Run
-Once the sources sucessfully build, you can start playing with the solver. It required two arguments: a mesh file created with Gmsh and a config file containing the solver options.
+## Running the tests
+Once the sources sucessfully build, you can start using with the solver. It required two arguments: a mesh file created with Gmsh and a config file containing the solver options. Examples of mesh files and config files are given [here](https://github.com/pvanberg/MATH0471-DG/tree/master/doc).
+
 ```
 cd bin
 ./dgalerkin mymesh.msh myconfig.conf

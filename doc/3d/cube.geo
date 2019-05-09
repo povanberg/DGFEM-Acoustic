@@ -1,6 +1,6 @@
 //+
 SetFactory("OpenCASCADE");
-Box(1) = {-10, -4, -4, 20, 8, 8};
+Box(1) = {-10, -10, -10, 20, 20, 20};
 //+
 Physical Volume("Domain") = {1};
 //+

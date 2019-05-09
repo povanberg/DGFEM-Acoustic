@@ -11,10 +11,6 @@ struct Config {
     double timeStep = 0.1;
     double timeRate = 0.1;
 
-    // Specify the numerical flux
-    std::string flux = "average";
-    double fluxCoeff=1;
-
     // Element Type:
     std::string elementType = "Lagrange";
 
@@ -26,8 +22,16 @@ struct Config {
     // value : tuple<BCType, BCValue>
     std::map<int, std::pair<std::string, double>> physBCs;
 
+    // Mean flow parameters
+    std::vector<double> v0 = {0, 0, 0};
+    double rho0 = 1;
+    double c0 = 1;
+
     // Number of threads
     int numThreads = 1;
+
+    // Sources
+    std::vector<std::vector<double>> sources;
 
     // Save file
     std::string saveFile = "results.msh";

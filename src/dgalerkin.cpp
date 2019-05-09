@@ -10,44 +10,47 @@
 
 int main(int argc, char **argv)
 {
-    // The DGarlekin solver requires 2 arguments
-    // 1: the Mesh file (.msh)
-    // 2: the config file (see, configParser.cpp)
-    // e.g. ./dgarlerkin mymesh.msh myconfig.conf
-    // ------------------------------------------
+    /**
+     * The DGarlekin solver requires 2 arguments
+     * 1 : the Mesh file (.msh)
+     * 2 : the config file (.conf)
+     *
+     * e.g. ./dgarlerkin mymesh.msh myconfig.conf
+     */
     if(argc!=3){ return E2BIG; }
     std::string msh_name = argv[1];
     std::string config_name = argv[2];
 
-    // Init Gmsh
     gmsh::initialize();
     gmsh::option::setNumber("General.Terminal", 1);
     gmsh::open(msh_name);
 
-    // Load config parameters
     Config config = config::parseConfig(config_name);
     gmsh::logger::write("Config loaded : " + config_name);
 
-    // Retrieve parameters required to run the
-    // Discontinuous Galerkin simulation.
     Mesh mesh(msh_name, config);
 
-    // Convection vector
-    std::vector<double> a = {3, 0, 0};
-
-    // Initialize the solution
-    std::vector<double> u(mesh.getNumNodes());
-    for(int n=0; n<mesh.getNumNodes(); n++) {
+    /**
+     * Initialize the solution:
+     * Here you can impose the initial condition
+     */
+    std::vector<std::vector<double>> u(4,std::vector<double>(mesh.getNumNodes()));
+    for(int n=0; n<mesh.getNumNodes(); n++){
         std::vector<double> coord, paramCoord;
         gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
-        // Gaussian
-        u[n] = exp(-((coord[0] - 0) * (coord[0] - 0) + (coord[1]+ 0) * (coord[1]- 0) + (coord[2]- 0) * (coord[2]- 0))/1);
+        u[0][n] = exp(-((coord[0] - 0) * (coord[0] - 0) +
+                        (coord[1]- 0) * (coord[1] - 0) +
+                        (coord[2]- 0) * (coord[2]- 0))/1);
+        //u[0][n] = 0;
+        u[1][n] = 0;
+        u[2][n] = 0;
+        u[3][n] = 0;
     }
 
     if(config.timeIntMethod == "Euler1")
-        solver::forwardEuler(u, a, mesh, config);
+        solver::forwardEuler(u, mesh, config);
     else if(config.timeIntMethod == "Runge-Kutta")
-        solver::rungeKutta(u, a, mesh, config);
+        solver::rungeKutta(u, mesh, config);
 
     gmsh::finalize();
 

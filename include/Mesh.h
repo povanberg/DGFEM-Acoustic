@@ -13,116 +13,103 @@ class Mesh {
 public:
     Mesh(std::string name, Config config);
 
-    // Vector access: inline optimization (c++ macro)
-    // Remove function overhead, by enforcing replacement
-    // -> c+11, inline is implicit inside class core
+    /**
+     * List of getters used for vector access and to improve readability.
+     * The inline optimization (equivalent of c macro) is used to
+     * remove the associated function overhead.
+     *
+     * The following inline fcts follow the convention:
+     * el = element indices in memory storage (!= element tag)
+     * f = face indices in memory storage
+     * n,i = element or face node (0,..., elNumNode)
+     * g = integration point indices
+     * x = physical coordinates (0=x, 1=y, 2=z)
+     * u = parametric coordinates (0=u, 1=v, 2=w)
+     *
+     * NB: since c+11, inline is implicit inside class core
+     */
     inline int& elTag(int el) {
         return m_elTags[el];
     };
-    // Getter : (el, n) -> node 'n' of element 'el'.
     inline int& elNodeTag(int el, int n=0) {
         return m_elNodeTags[el*m_elNumNodes+n];
     };
-    // Getter : (el, g, i, j) -> dx_i/du_j(g) at int point 'g' for element 'el'.
     inline double& elJacobian(int el, int g=0, int x=0, int u=0) {
         return m_elJacobians[el*m_elNumIntPts*9 + g*9 + u*3 + x];
     };
-    // Getter : (el, g) -> det of the jacobian at int point 'g' for element 'el'.
     inline double& elJacobianDet(int el, int g=0) {
         return m_elJacobianDets[el*m_elNumIntPts + g];
     };
-    // Getter : (el, g, x) -> coordinate x of the int point 'g' for element 'el'.
-    inline double& elIntPtCoord(int el, int g=0, int x=0) {
-        return m_elIntPtCoords[el*m_elNumIntPts*3 + g*3 + x];
-    };
-    // Getter : (g) -> weigth associated to g-th int point.
     inline double& elWeight(int g) {
         return m_elIntParamCoords[g*4 + 3];
     };
-    // Getter : (g, i) -> i-th basis fct evaluated at g-th int point.
     inline double& elBasisFct(int g, int i=0) {
         return m_elBasisFcts[g*m_elNumNodes + i];
     };
-    //  Getter : (g, i, u) -> u-th derivative of the i-th basis fct evaluated at g-th int point.
     inline double& elUGradBasisFct(int g, int i=0, int u=0) {
         return m_elUGradBasisFcts[g*m_elNumNodes*3 + i*3 + u];
     };
-    //  Getter : (el, g, i, x) -> x-th derivative of the i-th basis fct evaluated at g-th int point for the element 'el'.
     inline double& elGradBasisFct(int el, int g=0, int i=0, int x=0) {
         return m_elGradBasisFcts[el*m_elNumIntPts*m_elNumNodes*3 + g*m_elNumNodes*3 + i*3 + x];
     };
-    // Getter : (el, f, i) -> i-th node of the f-th face for element 'el'
     inline int& elFNodeTag(int el, int f=0, int i=0) {
         return m_elFNodeTags[el*m_fNumPerEl*m_fNumNodes + f*m_fNumNodes + i];
     };
-    // Getter : (f, i) -> i-th node tags of the f-th face.
     inline int& fNodeTag(int f, int i=0) {
         return m_fNodeTags[f*m_fNumNodes + i];
     };
-    // Getter : (el, f, i) -> i-th node of the f-th face for element 'el'
     inline int& elFNodeTagOrdered(int el, int f=0, int i=0) {
         return m_elFNodeTagsOrdered[el*m_fNumPerEl*m_fNumNodes + f*m_fNumNodes + i];
     };
-    // Getter : (f, i) -> i-th node tags of the f-th face.
     inline int& fNodeTagOrdered(int f, int i=0) {
         return m_fNodeTagsOrdered[f*m_fNumNodes + i];
     };
-    // Getter : (f, g, i, j) -> dx_i/du_j(g) at int point 'g' for face 'f'.
     inline double& fJacobian(int f, int g=0, int x=0, int u=0) {
         return m_fJacobians[f*m_fNumIntPts*9 + g*9 + u*3 + x];
     };
-    // Getter : (f, g) -> det of the jacobian at int point 'g' for face 'f'.
     inline double& fJacobianDet(int f, int g=0) {
         return m_fJacobianDets[f*m_fNumIntPts + g];
     };
-    //  Getter : (g, i, u) -> u-th derivative of the i-th basis fct evaluated at g-th int point.
     inline double& fUGradBasisFct(int g, int i=0, int u=0) {
         return m_fUGradBasisFcts[g*m_fNumNodes*3 + i*3 + u];
     };
-    //  Getter : (el, g, i, x) -> x-th derivative of the i-th basis fct evaluated at g-th int point for the element 'el'.
     inline double& fGradBasisFct(int f, int g=0, int i=0, int x=0) {
         return m_fGradBasisFcts[f*m_fNumIntPts*m_fNumNodes*3 + g*m_fNumNodes*3 + i*3 + x];
     };
-    // Getter : (f, g, x) -> coordinate x of the int point 'g' for face 'f'.
     inline double& fIntPtCoord(int f, int g=0, int x=0) {
         return m_fIntPtCoords[f*m_fNumIntPts*3 + g*3 + x];
     };
-    // Getter : (g) -> weigth associated to g-th int point.
     inline double& fWeight(int g) {
         return m_fIntParamCoords[g*4 + 3];
     };
-    // Getter : (g, i) -> i-th basis fct evaluated at g-th int point.
     inline double& fBasisFct(int g, int i=0) {
         return m_fBasisFcts[g*m_fNumNodes + i];
     };
-    // Getter : (f, g, i) -> normal at gauss point 'g' of face 'f'.
     inline double& fNormal(int f, int g=0, int x=0) {
         return m_fNormals[f*3*m_fNumIntPts + g*3 + x];
     };
-    // Getter : (el, f) -> f-th face id for element 'el'
     inline int &elFId(int el, int f=0) {
         return m_elFIds[el*m_fNumPerEl +f];
     }
-    // Getter (f, el) -> el-th neighbooring element of face 'f'
     inline int &fNbrElId(int f, int el=0) {
         return m_fNbrElIds[f][el];
     }
-    // Getter (f, nf, nel) -> corresponding 'el' node with 'f' node.
     inline int &fNToElNId(int f, int nf=0, int el=0) {
         return m_fNToElNIds[f][nf*m_fNbrElIds[f].size() + el];
     }
-    // Getter (el, f) -> orientation of the face 'f' for element 'el'
     inline int &elFOrientation( int el, int f) {
         return m_elFOrientation[el*m_fNumPerEl+f];
     }
-    // Getter : (el, i, j) -> i-th row and j-th column of 'el' mass matrix
     inline double &elMassMatrix(int el, int i=0, int j=0) {
         return m_elMassMatrices[el*m_elNumNodes*m_elNumNodes + i*m_elNumNodes + j];
     }
-    // Getter : (f, n) -> flux through n-th of face 'f'
     inline double &fFlux(int f, int n=0) {
         return m_fFlux[f*m_fNumNodes + n];
     }
+
+    /**
+     * Extra getters
+     */
     int getNumNodes(){
         return m_elNodeTags.size();
     }
@@ -136,173 +123,103 @@ public:
         return m_elNodeTags;
     }
 
-    // Compute the element mass matrix
-    void getElMassMatrix(const int el, const bool inverse, double *elMassMatrix);
-    // Precompute and store the mass matris for all elements in m_elMassMatrix
+    /**
+     * Matrices and vectors assembly
+     */
+    void getElMassMatrix(int el, bool inverse, double *elMassMatrix);
     void precomputeMassMatrix();
-    // Compute the element stiffness/convection matrix
-    void getElStiffVector(const int el, double* a, double* u, double *elStiffVector);
-    // Compute Numerical Flux through surface  'f'
-    void getFlux(const int f, double* a, double* u, double* F);
-    // Precompute and store the flux through all surfaces
-    void precomputeFlux(double* a, double * u);
-    // Compute Numerical Flux through element 'el'
-    void getElFlux(const int el, double* F);
-    // Return the list of nodes for each unique face given a list of node per face and per elements
+    void precomputeFlux(std::vector<double> &u, std::vector<std::vector<double>> &Flux, int eq);
+    void getElFlux(int el, double* F);
     void getUniqueFaceNodeTags();
-    // Compute and store normal for each faces
-    void setFaceNormals();
-    // Set and retrieve the element upstream
-    void setNumFlux(std::string fluxType, double *a, double fluxCoeff=0.0);
-    // Enforce boundaries conditions
-    void enforceDiricheletBCs(double* u);
-
+    void getElStiffVector(int el, std::vector<std::vector<double>> &Flux,
+                          std::vector<double> &u, double *elStiffVector);
+    void updateFlux(std::vector<std::vector<double>> &u, std::vector<std::vector<std::vector<double>>> &Flux,
+                    std::vector<double> &v0, double c0, double rho0);
 
 private:
-    std::string name;
-    Config config;
-    // Physics space dim
-    int m_Dim = 3;
-    // Dimension of the element (and the domain)
-    int m_elDim;
-    // Element Types (integer)
-    std::vector<int> m_elType;
-    // Element Type name
-    std::string m_elName;
-    // Element Order
-    int m_elOrder;
-    // Number of nodes per element
-    int m_elNumNodes;
-    // Number of integration points
-    int m_elNumIntPts;
-    // Number of elements in dim
-    int m_elNum;
-    // Integration type name
-    std::string m_elIntType;
-    // Parametric coordinates of the element
-    std::vector<double> m_elParamCoord;
-    // Tags of the elements
-    std::vector<int> m_elTags;
-    // Tags of the nodes associated to each element
-    // [e1n1, e1n2, ..., e2n1, e2n2, ...]
-    std::vector<int> m_elNodeTags;
-    // Jacobian evaluated at each integration points : (dx/du)
-    // [e1g1Jxx, e1g1Jxy, e1g1Jxz, ... e1g1Jzz, e1g2Jxx, ..., e1gGJzz, e2g1Jxx, ...]
-    std::vector<double> m_elJacobians;
-    // Determinants of the jacobian evaluated at each integration points
-    // [e1g1DetJ, e1g2DetJ, ... e2g1DetJ, e2g2DetJ, ...]
-    std::vector<double> m_elJacobianDets;
-    // x, y, z coordinates of the integration points element by element.
-    // [e1g1x, e1g1y, e1g1z, ... , e1gGz, e2g1x, ...]
-    std::vector<double> m_elIntPtCoords;
-    // u, v, w coordinates and the weight q for each integration point
-    // [g1u, g1v, g1w, g1q, g2u, ...]
-    std::vector<double> m_elIntParamCoords;
-    // Evaluation of the basis functions at the integration points
-    // [g1f1, g1f2, ..., g2f1, g2f2, ...]
-    std::vector<double> m_elBasisFcts;
-    // Evaluation of the derivatives of the basis functions at the integration points
-    // [g1df1/du, g1df1/dv, ..., g2df1/du, g2df1/dv, ..., g1df2/du, g1df2/dv, ...]
-    std::vector<double> m_elUGradBasisFcts;
-    // Evaluation of the derivatives of the basis functions at the integration points
-    // [e1g1df1/dx, e1g1df1/dy, ..., e1g2df1/dx, e1g2df1/dy, ..., e1g1df2/dx, e1g1df2/dy, ...]
-    std::vector<double> m_elGradBasisFcts;
-    // Faces ids for each element
-    // [e1f1, e1f2, ..., e2f1, e2f2, ...]
-    std::vector<int> m_elFIds;
-    // Node tags for each face and each element
-    // [e1f1n1, e1f1n2, ..., e1f2n1, e1f2n2, ..., e2f1n1, e2f1n2, ...]
-    // NB: Contains duplicated faces, each element refers to its own faces.
-    std::vector<int> m_elFNodeTags;
-    std::vector<int> m_elFNodeTagsOrdered;
-    // Contains 1 or -1, if the outward element face is in the same direction
-    // as the face normal or -1 if not.
-    // [e1f1, e1f2, ..., e2f1, e2f2]
-    std::vector<int> m_elFOrientation;
+    std::string name;                               // Associated mesh file string
+    Config config;                                  // Configuration object
 
-    // Face dimension
-    int m_fDim;
-    // Face type name
-    std::string m_fName;
-    // Face type
-    int m_fType;
-    // Number of nodes per face
-    int m_fNumNodes;
-    // Number of faces per element
-    int m_fNumPerEl;
-    // Entity containing all the faces
-    int m_fEntity;
-    // Number of unique faces
-    int m_fNum;
-    // Number of integration points on each face
-    int m_fNumIntPts;
-    // Node tags for each unique face
-    // [f1n1, f1n2, ..., f2n1, f2n2, ...]
-    std::vector<int> m_fNodeTags;
-    std::vector<int> m_fNodeTagsOrdered;
-    // Tag for each unique face
-    // [f1, f2, f3, ...]
-    std::vector<int> m_fTags;
-    // Jacobian evaluated at each integration points : (dx/du)
-    // [f1g1Jxx, f1g1Jxy, f1g1Jxz, ... f1g1Jzz, f1g2Jxx, ..., f1gGJzz, f2g1Jxx, ...]
-    std::vector<double> m_fJacobians;
-    // Determinants of the jacobian evaluated at each integration points
-    // [f1g1DetJ, f1g2DetJ, ... f2g1DetJ, f2g2DetJ, ...]
-    std::vector<double> m_fJacobianDets;
-    // x, y, z coordinates of the integration points for each faces
-    // [f1g1x, f1g1y, f1g1z, ... , f1gGz, f2g1x, ...]
-    std::vector<double> m_fIntPtCoords;
-    // u, v, w coordinates and the weight q for each integration point
-    // [g1u, g1v, g1w, g1q, g2u, ...]
-    std::vector<double> m_fIntParamCoords;
-    // Evaluation of the basis functions at the integration points
-    // [g1f1, g1f2, ..., g2f1, g2f2, ...]
-    std::vector<double> m_fBasisFcts;
-    // Evaluation of the derivatives of the basis functions at the integration points
-    // [g1df1/du, g1df1/dv, ..., g2df1/du, g2df1/dv, ..., g1df2/du, g1df2/dv, ...]
-    std::vector<double> m_fUGradBasisFcts;
-    // Evaluation of the derivatives of the basis functions at the integration points
-    // [e1g1df1/dx, e1g1df1/dy, ..., e1g2df1/dx, e1g2df1/dy, ..., e1g1df2/dx, e1g1df2/dy, ...]
-    std::vector<double> m_fGradBasisFcts;
-    // Normal for each face at each int point
-    // [f1g1Nx, f1g1Ny, f1g1Nz, f1g2Nx, ..., f2g1Nx, f2g1Ny, f2g1Nz, ...]
-    std::vector<double> m_fNormals;
-    // Is Face a boundary
-    std::vector<bool> m_fIsBoundary;
-    // Id of element of each side of the face
-    // NB: As this number is variable, for example, the face at the boundary
-    //     have one less neighbor, it requested the use of a 2D vector (or map)
-    std::vector<std::vector<int>> m_fNbrElIds;
-    // Map face node Ids to element node Ids
-    // [f1n1e1n, f1n1e2n, ..., f1n2e1n, f1n2e2n, ....]
-    // [f2n1e1n, f2n1e2n, ..., f2n2e1n, f2n2e2n, ....]
-    // [                  ...                        ]
-    // [fNn1e1n, fNn1e2n, ..., fNn2e1n, fNn2e2n, ....]
-    std::vector<std::vector<int>> m_fNToElNIds;
+    int m_Dim = 3;                                  // Physical space dimension
+    int m_elDim;                                    // Dimension of the element (and the domain)
+    std::vector<int> m_elType;                      // Element Types (integer)
+    std::string m_elName;                           // Element Type name
+    int m_elOrder;                                  // Element Order
+    int m_elNumNodes;                               // Number of nodes per element
+    int m_elNumIntPts;                              // Number of integration points
+    int m_elNum;                                    // Number of elements in dim
+    std::string m_elIntType;                        // Integration type name
+    std::vector<double> m_elParamCoord;             // Parametric coordinates of the element
+    std::vector<int> m_elTags;                      // Tags of the elements
+    std::vector<int> m_elNodeTags;                  // Tags of the nodes associated to each element
+                                                    // [e1n1, e1n2, ..., e2n1, e2n2, ...]
+    std::vector<double> m_elJacobians;              // Jacobian evaluated at each integration points : (dx/du)
+                                                    // [e1g1Jxx, e1g1Jxy, e1g1Jxz, ..., e1gGJzz, e2g1Jxx, ...]
+    std::vector<double> m_elJacobianDets;           // Determinants of the jacobian evaluated at each integration points
+                                                    // [e1g1DetJ, e1g2DetJ, ... e2g1DetJ, e2g2DetJ, ...]
+    std::vector<double> m_elIntPtCoords;            // x, y, z coordinates of the integration points element by element.
+                                                    // [e1g1x, e1g1y, e1g1z, ... , e1gGz, e2g1x, ...]
+    std::vector<double> m_elIntParamCoords;         // u, v, w coordinates and the weight q for each integration point
+                                                    // [g1u, g1v, g1w, g1q, g2u, ...]
+    std::vector<double> m_elBasisFcts;              // Evaluation of the basis functions at the integration points
+                                                    // [g1f1, g1f2, ..., g2f1, g2f2, ...]
+    std::vector<double> m_elUGradBasisFcts;         // Evaluation of the derivatives of the basis functions at the integration points
+                                                    // [g1df1/du, g1df1/dv, ..., g2df1/du, g2df1/dv, ..., g1df2/du, g1df2/dv, ...]
+    std::vector<double> m_elGradBasisFcts;          // Evaluation of the derivatives of the basis functions at the integration points
+                                                    // [e1g1df1/dx, e1g1df1/dy, ..., e1g2df1/dx, e1g2df1/dy, ..., e1g1df2/dx, e1g1df2/dy, ...]
+    std::vector<int> m_elFIds;                      // Faces ids for each element
+                                                    // [e1f1, e1f2, ..., e2f1, e2f2, ...]
+    std::vector<int> m_elFNodeTags;                 // Node tags for each face and each element
+    std::vector<int> m_elFNodeTagsOrdered;          // Ordered used for comparison, UnOrdered preserve GMSH ordering and locality
+                                                    // [e1f1n1, e1f1n2, ..., e1f2n1, e1f2n2, ..., e2f1n1, e2f1n2, ...]
+    std::vector<int> m_elFOrientation;              // Contains 1 or -1, if the outward element face is in the same direction
+                                                    // as the face normal or -1 if not. [e1f1, e1f2, ..., e2f1, e2f2]
 
-    // Element mass matrix stored contiguously (row major)
-    // [e1m11, e1m12, ..., e1m21, e1m22, ..., e2m11, ...]
-    std::vector<double> m_elMassMatrices;
-    // Flux through all faces
-    // [f1n1, f1n2, ..., f2n1, f2n2, ...]
-    std::vector<double> m_fFlux;
+    int m_fDim;                                     // Face dimension
+    std::string m_fName;                            // Face type name
+    int m_fType;                                    // Face type
+    int m_fNumNodes;                                // Number of nodes per face
+    int m_fNumPerEl;                                // Number of faces per element
+    int m_fEntity;                                  // Entity containing all the faces
+    int m_fNum;                                     // Number of unique faces
+    int m_fNumIntPts;                               // Number of integration points on each face
+    std::string m_fIntType;                         // Face integration type (same as element)
+    std::vector<int> m_fNodeTags;                   // Node tags for each unique face
+    std::vector<int> m_fNodeTagsOrdered;            // [f1n1, f1n2, ..., f2n1, f2n2, ...]
+    std::vector<int> m_fTags;                       // Tag for each unique face
+                                                    // [f1, f2, f3, ...]
+    std::vector<double> m_fJacobians;               // Jacobian evaluated at each integration points : (dx/du)
+                                                    // [f1g1Jxx, f1g1Jxy, f1g1Jxz, ... f1g1Jzz, f1g2Jxx, ..., f1gGJzz, f2g1Jxx, ...]
+    std::vector<double> m_fJacobianDets;            // Determinants of the jacobian evaluated at each integration points
+                                                    // [f1g1DetJ, f1g2DetJ, ... f2g1DetJ, f2g2DetJ, ...]
+    std::vector<double> m_fIntPtCoords;             // x, y, z coordinates of the integration points for each faces
+                                                    // [f1g1x, f1g1y, f1g1z, ... , f1gGz, f2g1x, ...]
+    std::vector<double> m_fIntParamCoords;          // u, v, w coordinates and the weight q for each integration point
+                                                    // [g1u, g1v, g1w, g1q, g2u, ...]
+    std::vector<double> m_fBasisFcts;               // Evaluation of the basis functions at the integration points
+                                                    // [g1f1, g1f2, ..., g2f1, g2f2, ...]
+    std::vector<double> m_fUGradBasisFcts;          // Evaluation of the derivatives of the basis functions at the integration points
+                                                    // [g1df1/du, g1df1/dv, ..., g2df1/du, g2df1/dv, ..., g1df2/du, g1df2/dv, ...]
+    std::vector<double> m_fGradBasisFcts;           // Evaluation of the derivatives of the basis functions at the integration points
+                                                    // [e1g1df1/dx, e1g1df1/dy, ..., e1g2df1/dx, e1g2df1/dy, ..., e1g1df2/dx, e1g1df2/dy, ...]
+    std::vector<double> m_fNormals;                 // Normal for each face at each int point
+                                                    // [f1g1Nx, f1g1Ny, f1g1Nz, f1g2Nx, ..., f2g1Nx, f2g1Ny, f2g1Nz, ...]
 
-    // Numeric flux type
-    std::string m_numFluxType;
-    // Numeric flux coefficient: k
-    // Lax-Friedrich: (u- + u+)/2 + |a|(1-k)/2(u+ - u-)
-    double m_numFluxCoeff;
+    std::vector<std::vector<int>> m_fNbrElIds;      // Id of element of each side of the face
+    std::vector<std::vector<int>> m_fNToElNIds;     // Map face node Ids to element node Ids
 
-    // Dirichelet boundary conditions
-    // int = node id in assembled solution vector
-    // double = value of dirichelet BCs
-    std::vector<std::pair<int, double>> m_elNodeDirichelet;
-    // Neumann flux boundary conditions
-    // bool = is face a Neumann BC
-    // double = value of Neumann BC
-    // NB: By convention the normal points outward domain.
-    std::vector<std::pair<bool, double>> m_fNeumann;
+    std::vector<double> m_elMassMatrices;           // Element mass matrix stored contiguously (row major)
+                                                    // [e1m11, e1m12, ..., e1m21, e1m22, ..., e2m11, ...]
+    std::vector<double> m_fFlux;                    // Flux through all faces
+                                                    // [f1n1, f1n2, ..., f2n1, f2n2, ...]
 
+    std::vector<bool> m_fIsBoundary;                // Is Face a boundary
+    std::vector<int> m_fBC;                         // Boundary type
+
+    std::vector<std::vector<double>> RKR;           // R*K*R^-1 matrix product, absorbing boundary
+
+    std::vector<std::vector<double>> uGhost;                    // Ghost element nodal solution
+    std::vector<std::vector<std::vector<double>>> FluxGhost;    // Ghost flux
 };
 
 #endif //DGALERKIN_MESH_H

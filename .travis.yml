@@ -11,4 +11,4 @@ matrix:
       install:
         - docker exec -t ubuntu-18-04 bash -c "apt-get -qq update; apt-get install -y git; apt-get install -y cmake; apt-get install -y build-essential;  apt-get install -y wget;  apt-get install -y tar;  apt-get install -y  libgfortran3; apt-get install -y libgmsh-dev; apt-get install -y libeigen3-dev"
       script:
-- docker exec -t ubuntu-18-04 bash -c "./build.sh;"
+        - docker exec -t ubuntu-18-04 bash -c "./build.sh;"

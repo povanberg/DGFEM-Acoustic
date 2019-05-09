@@ -1,6 +1,8 @@
-# Discontinuous Galerkin Method for Acoustic Wave Propagation
+# DGFEM for Acoustic Wave Propagation 
 
-This repository implements a discontinuous Galerkin finite element medthod (DGFEM) applied to the linearized Euler equations and the acoustic perturbation equations. The solver is based on [GMSH](http://gmsh.info/) library and supports a wide range of features:
+[![Build Status](https://travis-ci.org/pvanberg/MATH0471-DG.svg?branch=master)](https://travis-ci.org/pvanberg/MATH0471-DG)
+
+This repository implements a discontinuous Galerkin finite element method (DGFEM) applied to the linearized Euler equations and the acoustic perturbation equations. The solver is based on [GMSH](http://gmsh.info/) library and supports a wide range of features:
 
 - 1D, 2D, 3D problems
 - 4-th order Runge-Kutta

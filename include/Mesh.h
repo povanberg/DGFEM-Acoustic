@@ -140,6 +140,7 @@ private:
     std::string name;                               // Associated mesh file string
     Config config;                                  // Configuration object
 
+    int fc=1;					    // Numerical flux coefficient	
     int m_Dim = 3;                                  // Physical space dimension
     int m_elDim;                                    // Dimension of the element (and the domain)
     std::vector<int> m_elType;                      // Element Types (integer)

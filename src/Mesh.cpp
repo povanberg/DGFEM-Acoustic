@@ -181,6 +181,10 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
                 }
                 case 2: {
                     eigen::cross(&fGradBasisFct(f, g, 0), &fGradBasisFct(f, g, 1), normal.data());
+                    if(g!=0 && eigen::dot(&fNormal(f,0), normal.data(), m_Dim) < 0) {
+                        for (int x = 0; x < m_Dim; ++x)
+                            normal[x] = -normal[x];
+                    }
                     break;
                 }
             }
@@ -188,6 +192,9 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
             m_fNormals.insert(m_fNormals.end(), normal.begin(), normal.end());
         }
     }
+
+    if(m_elOrder !=1)
+	fc = -1;
 
     assert(m_elFNodeTags.size() == m_elNum*m_fNumPerEl*m_fNumNodes);
     assert(m_fJacobianDets.size() == m_fNum*m_fNumIntPts);
@@ -500,7 +507,7 @@ void Mesh::precomputeFlux(std::vector<double> &u, std::vector<std::vector<double
                     elDn = fNbrElId(f, 1)*m_elNumNodes + fNToElNId(f, i, 1);
                     for (int g = 0; g < m_fNumIntPts; ++g) {
                         for (int x = 0; x < m_Dim; ++x)
-                            Fnum[x] = 0.5*((Flux[elUp][x]+Flux[elDn][x]) + config.c0*fNormal(f, g, x)*(u[elUp]-u[elDn]));
+                            Fnum[x] = 0.5*((Flux[elUp][x]+Flux[elDn][x]) + fc*config.c0*fNormal(f, g, x)*(u[elUp]-u[elDn]));
                         FIntPts[g] += eigen::dot(&fNormal(f, g), Fnum.data(), m_Dim) * fBasisFct(g, i);
                     }
                 }

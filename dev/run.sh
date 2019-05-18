@@ -18,4 +18,4 @@ export OMP_NUM_THREADS=16
 export OMP_CANCELLATION=true
 
 cd $HOME/MATH0471-DG/build/bin
-srun ./dgalerkin ../../2d/disk.msh ../../config/config.conf
+srun ./dgalerkin ../../doc/2d/disk.msh ../../doc/config/config.conf

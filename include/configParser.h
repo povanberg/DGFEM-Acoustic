@@ -33,6 +33,9 @@ struct Config {
     // Sources
     std::vector<std::vector<double>> sources;
 
+    // Initial conditions
+    std::vector<std::vector<double>> initConditions;
+
     // Save file
     std::string saveFile = "results.msh";
 };

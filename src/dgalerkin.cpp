@@ -32,21 +32,26 @@ int main(int argc, char **argv)
 
     /**
      * Initialize the solution:
-     * Here you can impose the initial condition
      */
-    std::vector<std::vector<double>> u(4,std::vector<double>(mesh.getNumNodes()));
-    for(int n=0; n<mesh.getNumNodes(); n++){
-        std::vector<double> coord, paramCoord;
-        gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
-        u[0][n] = exp(-((coord[0] - 0) * (coord[0] - 0) +
-                        (coord[1]- 0) * (coord[1] - 0) +
-                        (coord[2]- 0) * (coord[2]- 0))/1);
-        //u[0][n] = 0;
-        u[1][n] = 0;
-        u[2][n] = 0;
-        u[3][n] = 0;
+   std::vector<std::vector<double>> u(4,std::vector<double>(mesh.getNumNodes(), 0));
+    for(int i=0;i<config.initConditions.size();++i){
+		double x = config.initConditions[i][1];
+		double y = config.initConditions[i][2];
+		double z = config.initConditions[i][3];
+		double size = config.initConditions[i][4];
+		double amp = config.initConditions[i][5];
+        for(int n=0; n<mesh.getNumNodes(); n++) {
+            std::vector<double> coord, paramCoord;
+            gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
+		    u[0][n] += amp*exp(-((coord[0] - x) * (coord[0] - x) +
+		                         (coord[1]- y) * (coord[1] - y) +
+		                         (coord[2]- z) * (coord[2]- z))/size);
+        }
     }
-
+   
+	/**
+	 * Start solver
+	 */
     if(config.timeIntMethod == "Euler1")
         solver::forwardEuler(u, mesh, config);
     else if(config.timeIntMethod == "Runge-Kutta")

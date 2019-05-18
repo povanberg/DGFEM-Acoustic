@@ -1,5 +1,3 @@
-Include "3DMacro.geo";
-
 SetFactory("OpenCASCADE");
 
 angle = Pi/2;

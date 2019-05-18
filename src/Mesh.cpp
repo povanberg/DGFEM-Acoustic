@@ -193,6 +193,20 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
         }
     }
 
+    std::vector<double> viewNormals;
+    for(int f=0; f<m_fNum; f++) {
+        for(int g=0; g<m_fNumIntPts; ++g){
+            for(int x=0; x<3; ++x)
+                viewNormals.push_back(fIntPtCoord(f, g, x));
+            for(int x=0; x<3; ++x)
+                viewNormals.push_back(-fNormal(f, g, x));
+        }
+    }
+    int normalTag = 1;
+    gmsh::view::add("normals", normalTag);
+    gmsh::view::addListData(normalTag, "VP", m_fNum*m_fNumIntPts, viewNormals);
+    gmsh::view::write(normalTag, "normal.pos");
+
     if(m_elOrder !=1)
 	fc = -1;
 

@@ -100,6 +100,16 @@ namespace config{
                         config.sources.push_back(source);
                     }
                 }
+		else if(key.find("initialCondtition") == 0) {
+		    std::vector<std::string> sep = split(iter->second, ',');
+                    double x = std::stod(sep[1]);
+                    double y = std::stod(sep[2]);
+                    double z = std::stod(sep[3]);
+                    double size = std::stod(sep[4]);
+                    double amp = std::stod(sep[5]);
+		    std::vector<double> init1 = {0, x, y, z, size, amp};
+		    config.initConditions.push_back(init1);
+		}
             }
 
             std::remove(&config.saveFile[0]);

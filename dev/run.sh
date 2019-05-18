@@ -9,6 +9,7 @@
 #SBATCH --partition=defq 
 #SBATCH --output=out.txt
 
+module load scalapack/gcc/64/1.8.0
 module load gcc/4.9.2
 export CC=gcc
 export CXX=g++

@@ -43,6 +43,14 @@ cd bin
 ./dgalerkin mymesh.msh myconfig.conf
 ```
 
+### Minimal working example
+
+2D propagation of an Gaussian initial condition over a square.
+
+```
+./dgalerkin ../../doc/2d/square.msh ../../doc/config/config.conf 
+```
+
 ## Authors
 
 * Pierre-Olivier Vanberg

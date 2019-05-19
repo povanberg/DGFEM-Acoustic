@@ -207,7 +207,7 @@ Mesh::Mesh(std::string name, Config config) :  name(name), config(config) {
     gmsh::view::addListData(normalTag, "VP", m_fNum*m_fNumIntPts, viewNormals);
     gmsh::view::write(normalTag, "normal.pos");
 
-    if(m_elOrder !=1)
+    if(m_elDim==3 && m_elOrder !=1)
 	fc = -1;
 
     assert(m_elFNodeTags.size() == m_elNum*m_fNumPerEl*m_fNumNodes);

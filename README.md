@@ -10,7 +10,7 @@ This repository implements a discontinuous Galerkin finite element method (DGFEM
 - Absorbing and reflecting boundaries
 - Complex geometry and unstructured grid
 
-For more information, a detailled report is available here(soon). Preview of our auditorium simulation.
+For more information, a detailled report is available [here](https://github.com/pvanberg/DGFEM-Acoustic/blob/master/DGFEM_acoustic.pdf). 
 
 | Auditorium     | Isosurfaces     | Bulk|
 | ------------- |:-------------:| :-------------:| 

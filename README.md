@@ -1,6 +1,6 @@
 # DGFEM for Acoustic Wave Propagation 
 
-[![Build Status](https://travis-ci.org/pvanberg/MATH0471-DG.svg?branch=master)](https://travis-ci.org/pvanberg/MATH0471-DG)   [![Maintenance](https://img.shields.io/badge/Version-1.2.0-e67e22.svg)](https://github.com/pvanberg/MATH0471-DG/releases/tag/v1.2.0) [![Maintenance](https://img.shields.io/badge/c++-14%20|%2017%20|%2020-27ae60.svg)](https://github.com/pvanberg/MATH0471-DG/releases/tag/v1.0.0) 
+[![Build Status](https://travis-ci.org/pvanberg/DGFEM-Acoustic.svg?branch=master)](https://travis-ci.org/pvanberg/DGFEM-Acoustic)  [![Maintenance](https://img.shields.io/badge/Version-1.2.0-e67e22.svg)](https://github.com/pvanberg/MATH0471-DG/releases/tag/v1.2.0) [![Maintenance](https://img.shields.io/badge/c++-14%20|%2017%20|%2020-27ae60.svg)](https://github.com/pvanberg/MATH0471-DG/releases/tag/v1.0.0) 
 
 This repository implements a discontinuous Galerkin finite element method (DGFEM) applied to the linearized Euler equations and the acoustic perturbation equations. The solver is based on [GMSH](http://gmsh.info/) library and supports a wide range of features:
 
@@ -10,10 +10,15 @@ This repository implements a discontinuous Galerkin finite element method (DGFEM
 - Absorbing and reflecting boundaries
 - Complex geometry and unstructured grid
 
-For more information, a detailled report is available here(soon).
+For more information, a detailled report is available here(soon). Preview of our auditorium simulation.
+
+| Auditorium     | Isosurfaces     | Bulk|
+| ------------- |:-------------:| :-------------:| 
+| <img src="https://raw.githubusercontent.com/pvanberg/DGFEM-Acoustic/master/assets/auditorium_source2_2.png" width="400" height="200" />    | <img src="https://raw.githubusercontent.com/pvanberg/DGFEM-Acoustic/master/assets/auditorium_source_iso1.png" width="400" height="200" />  | <img src="https://raw.githubusercontent.com/pvanberg/DGFEM-Acoustic/master/assets/auditorium_source_bulk1.png" width="400" height="200" /> |
+
 
 ## Getting Started
-
+ 	
 ### Prerequisites
 
 First, make sure the following libraries are installed. If you are running a linux distribution (ubuntu, debian, ...), an installation [script](https://github.com/pvanberg/MATH0471-DG/blob/master/build.sh) is provided. 

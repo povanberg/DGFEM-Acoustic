@@ -2,8 +2,10 @@
 #include <map>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
-
+#include <vector>
+#include <chrono>
 #include "configParser.h"
+#include "utils.h"
 
 #ifndef DGALERKIN_MESH_H
 #define DGALERKIN_MESH_H
@@ -131,10 +133,19 @@ public:
     void precomputeFlux(std::vector<double> &u, std::vector<std::vector<double>> &Flux, int eq);
     void getElFlux(int el, double* F);
     void getUniqueFaceNodeTags();
+    void getUniqueFaceNodeTags2();
+
     void getElStiffVector(int el, std::vector<std::vector<double>> &Flux,
                           std::vector<double> &u, double *elStiffVector);
     void updateFlux(std::vector<std::vector<double>> &u, std::vector<std::vector<std::vector<double>>> &Flux,
                     std::vector<double> &v0, double c0, double rho0);
+
+    /**
+     * @brief Write VTK
+     * Added by Sofiane KHELLADI in 11/03/2022 
+     */
+    void writeVTU(std::string filename, std::vector<std::vector<double>> &u);
+    void writePVD(std::string filename);
 
 private:
     std::string name;                               // Associated mesh file string

@@ -1,0 +1,4 @@
+#!/bin/sh
+#export GMSHLIBS=gmsh-4.9.5-Linux64-sdk/lib
+#export LD_LIBRARY_PATH=$GMSHLIBS:$LD_LIBRARY_PATH
+build/bin/dgalerkin $1 $2

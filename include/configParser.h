@@ -1,9 +1,12 @@
 #include <string>
 #include <map>
+#include <fstream>
 
 #ifndef DGALERKIN_CONFIG_H
 #define DGALERKIN_CONFIG_H
 
+
+//! ////////////////////////////////////////////////////////////////
 struct Config {
     // Initial, final time and time step(t>0)
     double timeStart = 0;

@@ -7,8 +7,6 @@ echo
 
 echo "[1] Get depedencies and external libraries.";
 
-module load cmake/3.11.1
-module load gcc/4.9.2
 
 dpkg -s cmake > /dev/null 2>&1;
 if [ $? -eq 0 ]; then
@@ -48,16 +46,16 @@ else
 	echo "Lapack/Blas installed.";
 fi
 
-if [ ! -d "gmsh-4.1.4-Linux64-sdk" ]; then
+if [ ! -d "gmsh-4.1.5-Linux64-sdk" ]; then
 	echo "Gmsh not found, installing...";
-	wget http://gmsh.info/bin/Linux/gmsh-4.1.4-Linux64-sdk.tgz
-	tar -xf gmsh-4.1.4-Linux64-sdk.tgz
-	rm -rf gmsh-4.1.4-Linux64-sdk.tgz
+	wget http://gmsh.info/bin/Linux/gmsh-4.1.5-Linux64-sdk.tgz
+	tar -xf gmsh-4.1.5-Linux64-sdk.tgz
+	rm -rf gmsh-4.1.5-Linux64-sdk.tgz
 	echo "Gmsh installed."
 else
        echo "Gmsh found.";
 fi
-cd gmsh-4.1.4-Linux64-sdk/
+cd gmsh-4.1.5-Linux64-sdk/
 export FC=gfortran
 export PATH=${PWD}/bin:${PWD}/lib:${PATH}
 export INCLUDE=${PWD}/include:${INCLUDE}
@@ -67,16 +65,16 @@ export DYLD_LIBRARY_PATH=${PWD}/lib:${DYLD_LIBRARY_PATH}
 cd ../
 
 
-if [ ! -d "eigen-eigen-323c052e1731" ]; then
+if [ ! -d "eigen-3.4.0" ]; then
 	echo "Eigen not found, installing...";
-  	wget http://bitbucket.org/eigen/eigen/get/3.3.7.tar.gz
- 	tar -xf 3.3.7.tar.gz
- 	rm -rf 3.3.7.tar.gz
+  	wget https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz
+ 	tar -xf eigen-3.4.0.tar.gz
+ 	rm -rf eigen-3.4.0.tar.gz
 	echo "Eigen installed."
 else
 	echo "Eigen found."
 fi
-cd eigen-eigen-323c052e1731/
+cd eigen-3.4.0/
 export INCLUDE=${PWD}:${INCLUDE}
 cd ../
 

@@ -110,10 +110,14 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
     screen_display::write_string("Faces treatment", GREEN);
     start = std::chrono::system_clock::now();
     m_fDim = m_elDim - 1;
-    m_fName = m_fDim == 0 ? "point" : m_fDim == 1 ? "line" : m_fDim == 2 ? "triangle" : // Quads not yet supported.
-                                                                 "None";
-    m_fNumNodes = m_fDim == 0 ? 1 : m_fDim == 1 ? 1 + m_elOrder : m_fDim == 2 ? (m_elOrder + 1) * (m_elOrder + 2) / 2 : // Triangular elements only.
-                                                                      0;
+    m_fName = m_fDim == 0 ? "point" : m_fDim == 1 ? "line"
+                                  : m_fDim == 2   ? "triangle"
+                                                  : // Quads not yet supported.
+                                      "None";
+    m_fNumNodes = m_fDim == 0 ? 1 : m_fDim == 1 ? 1 + m_elOrder
+                                : m_fDim == 2   ? (m_elOrder + 1) * (m_elOrder + 2) / 2
+                                                : // Triangular elements only.
+                                    0;
 
     m_fType = gmsh::model::mesh::getElementType(m_fName, m_elOrder);
 
@@ -134,7 +138,7 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
      */
     screen_display::write_string("Remove the faces counted two times", GREEN);
     start = std::chrono::system_clock::now();
-    getUniqueFaceNodeTags2();
+    getUniqueFaceNodeTags();
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     screen_display::write_value("Elapsed time:", elapsed.count() * 1.0e-6, "s", BLUE);
@@ -861,15 +865,9 @@ void Mesh::getUniqueFaceNodeTags()
 
     // Ordering per face for efficient comparison
     m_elFNodeTagsOrdered = m_elFNodeTags;
-    
-    // auto start = std::chrono::system_clock::now();
-    
+
     for (int i = 0; i < m_elFNodeTagsOrdered.size(); i += m_fNumNodes)
         std::sort(m_elFNodeTagsOrdered.begin() + i, m_elFNodeTagsOrdered.begin() + (i + m_fNumNodes));
-    
-    // auto end = std::chrono::system_clock::now();
-    // auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    // screen_display::write_value("Ordering per face for efficient comparison - Elapsed time:", elapsed.count() * 1.0e-6, "s", BLUE);
 
     // Unordered keep gmsh order while ordered array are used for comparison
     m_fNodeTags = m_elFNodeTags;
@@ -901,62 +899,6 @@ void Mesh::getUniqueFaceNodeTags()
             it_unordered += m_fNumNodes;
         }
     }
-}
-
-void Mesh::getUniqueFaceNodeTags2()
-{
-
-    // Ordering per face for efficient comparison
-    m_elFNodeTagsOrdered = m_elFNodeTags;
-    
-    // auto start = std::chrono::system_clock::now();
-
-    for (int i = 0; i < m_elFNodeTagsOrdered.size(); i += m_fNumNodes)
-        std::sort(m_elFNodeTagsOrdered.begin() + i, m_elFNodeTagsOrdered.begin() + (i + m_fNumNodes));
-
-    // auto end = std::chrono::system_clock::now();
-    // auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    // screen_display::write_value("Ordering per face for efficient comparison - Elapsed time:", elapsed.count() * 1.0e-6, "s", BLUE);
-
-    // Unordered keep gmsh order while ordered array are used for comparison
-    m_fNodeTags = m_elFNodeTags;
-    m_fNodeTagsOrdered = m_elFNodeTagsOrdered;
-
-    // Remove identical faces by comparing ordered arrays.
-    std::vector<int>::iterator it_delete;
-    std::vector<int>::iterator it_deleteUnordered;
-    std::vector<int>::iterator it_unordered = m_fNodeTags.begin();
-    for (std::vector<int>::iterator it_ordered = m_fNodeTagsOrdered.begin(); it_ordered != m_fNodeTagsOrdered.end();)
-    {
-
-        it_deleteUnordered = it_unordered + m_fNumNodes;
-        for (it_delete = it_ordered + m_fNumNodes; it_delete != m_fNodeTagsOrdered.end(); it_delete += m_fNumNodes)
-        {
-            if (std::equal(it_ordered, it_ordered + m_fNumNodes, it_delete))
-                break;
-            it_deleteUnordered += m_fNumNodes;
-        }
-
-        if (it_delete != m_fNodeTagsOrdered.end())
-        {
-            m_fNodeTagsOrdered.erase(it_delete, it_delete + m_fNumNodes);
-            m_fNodeTags.erase(it_deleteUnordered, it_deleteUnordered + m_fNumNodes);
-        }
-        else
-        {
-            it_ordered += m_fNumNodes;
-            it_unordered += m_fNumNodes;
-        }
-    }
-
-    std::ofstream outfile2("debug_fnode3.txt");
-
-    for (int i = 0; i < m_fNodeTagsOrdered.size(); i ++)
-    {
-        outfile2<<m_fNodeTagsOrdered[i]<<std::endl;
-    }
-
-    outfile2.close();
 }
 
 /**

@@ -133,8 +133,6 @@ public:
     void precomputeFlux(std::vector<double> &u, std::vector<std::vector<double>> &Flux, int eq);
     void getElFlux(int el, double* F);
     void getUniqueFaceNodeTags();
-    void getUniqueFaceNodeTags2();
-
     void getElStiffVector(int el, std::vector<std::vector<double>> &Flux,
                           std::vector<double> &u, double *elStiffVector);
     void updateFlux(std::vector<std::vector<double>> &u, std::vector<std::vector<std::vector<double>>> &Flux,

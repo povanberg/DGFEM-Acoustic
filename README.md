@@ -62,8 +62,16 @@ cd bin
 2D propagation of an Gaussian initial condition over a square.
 
 ```
+cd build/bin
 ./dgalerkin ../../doc/2d/square.msh ../../doc/config/config.conf 
 ```
+
+or configure run_caa batch file with the right mesh and configurations files.
+
+```
+sh run_caa 
+```
+
 
 ## Authors
 

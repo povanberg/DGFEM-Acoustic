@@ -1,6 +1,6 @@
 # DGFEM for Acoustic Wave Propagation 
 
-[![Build Status](https://travis-ci.org/pvanberg/DGFEM-Acoustic.svg?branch=master)]()  [![Maintenance](https://img.shields.io/badge/version-1.2.1-red)](https://gitlab.ensam.eu/khelladi/DGFEM-Acoustic/-/tree/v1.2.1) [![Maintenance](https://img.shields.io/badge/c++-14%20|%2017%20|%2020-27ae60.svg)](https://gitlab.ensam.eu/khelladi/DGFEM-Acoustic/-/tree/v1.2.1) 
+[![Build Status](https://travis-ci.org/pvanberg/DGFEM-Acoustic.svg?branch=master)](https://travis-ci.org/pvanberg/DGFEM-Acoustic)  [![Maintenance](https://img.shields.io/badge/Version-1.2.0-e67e22.svg)](https://github.com/pvanberg/MATH0471-DG/releases/tag/v1.2.0) [![Maintenance](https://img.shields.io/badge/c++-14%20|%2017%20|%2020-27ae60.svg)](https://github.com/pvanberg/MATH0471-DG/releases/tag/v1.0.0) 
 
 This repository implements a discontinuous Galerkin finite element method (DGFEM) applied to the linearized Euler equations and the acoustic perturbation equations. The solver is based on [GMSH](http://gmsh.info/) library and supports a wide range of features:
 
@@ -14,7 +14,7 @@ For more information, a detailled report is available [here](https://github.com/
 
 | Auditorium     | Isosurfaces     | Bulk|
 | ------------- |:-------------:| :-------------:| 
-| <img src="https://gitlab.ensam.eu/khelladi/DGFEM-Acoustic/-/raw/b1026a1c6b9d312d02f6f70e776ed98e054ef00a/assets/auditorium_source2_2.png" width="400" height="200" />    | <img src="https://gitlab.ensam.eu/khelladi/DGFEM-Acoustic/-/raw/b1026a1c6b9d312d02f6f70e776ed98e054ef00a/assets/auditorium_source_iso1.png" width="400" height="200" />  | <img src="https://gitlab.ensam.eu/khelladi/DGFEM-Acoustic/-/raw/b1026a1c6b9d312d02f6f70e776ed98e054ef00a/assets/auditorium_source_bulk1.png" width="400" height="200" /> |
+| <img src="https://raw.githubusercontent.com/pvanberg/DGFEM-Acoustic/master/assets/auditorium_source2_2.png" width="400" height="200" />    | <img src="https://raw.githubusercontent.com/pvanberg/DGFEM-Acoustic/master/assets/auditorium_source_iso1.png" width="400" height="200" />  | <img src="https://raw.githubusercontent.com/pvanberg/DGFEM-Acoustic/master/assets/auditorium_source_bulk1.png" width="400" height="200" /> |
 
 
 ## Getting Started
@@ -34,11 +34,10 @@ OpenMP
 ### Installing
 
 ```
-git clone https://gitlab.ensam.eu/khelladi/DGFEM-Acoustic.git
-cd DGFEM-Acoustic
+git clone https://github.com/pvanberg/MATH0471-DG.git
+cd MATH0471-DG
 mkdir build && cd build
-cmake ../ -DCMAKE_BUILD_TYPE=Release  -G "Unix Makefiles" -DGMSH_INCLUDE_DIRS="../gmsh-4.1.5-Linux64-sdk/include" -DGMSH_LIBRARIES="../gmsh-4.1.5-Linux64-sdk/lib/libgmsh.so" -DGMSH_EXECUTABLE="../gmsh-4.1.5-Linux64-sdk/bin/gmsh" -DEIGEN_INCLUDE_DIRS="/usr/include/eigen3"
-make -j4
+cmake .. && make -j4
 ```
 
 ## Running the tests
@@ -62,6 +61,3 @@ cd bin
 * Pierre-Olivier Vanberg
 * Martin Lacroix
 * Tom Servais
-
-## Contributors
-* Sofiane Khelladi

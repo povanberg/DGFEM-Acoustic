@@ -1,16 +1,16 @@
-#include <string>
-#include <map>
 #include <fstream>
+#include <map>
+#include <string>
 
 #ifndef DGALERKIN_CONFIG_H
 #define DGALERKIN_CONFIG_H
 
-
 //! ////////////////////////////////////////////////////////////////
-struct Config {
+struct Config
+{
     // Initial, final time and time step(t>0)
     double timeStart = 0;
-    double timeEnd =  1;
+    double timeEnd = 1;
     double timeStep = 0.1;
     double timeRate = 0.1;
 
@@ -43,7 +43,8 @@ struct Config {
     std::string saveFile = "results.msh";
 };
 
-namespace config{
+namespace config
+{
     Config parseConfig(std::string name);
 }
 

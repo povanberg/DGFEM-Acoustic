@@ -96,6 +96,29 @@ namespace screen_display
         }
 #endif
     }
+    bool write_if_false(const bool assertion, const char *msg)
+    {
+        if (!assertion)
+        {
+            // endl to flush
+            write_string(msg,RED);
+        }
+        return assertion;
+    }
+
+    // void write_vector_to_file(std::string file_name, std::vector<auto> vec, size_t offset)
+    // {
+    //     std::ofstream outfile(file_name.c_str());
+    //     write_value("writing value in "+file_name+" - vector size",vec.size()/offset,"",BLUE);
+    //     for(size_t i=0;i<vec.size();i+=offset)
+    //     {
+    //        for(size_t j=0;j<offset;j++)
+    //             outfile<<vec[i+j]<<"\t";
+    //        outfile<<std::endl;      
+    //     }
+
+    //     outfile.close();
+    // }
 }
 ///////////////////////
 

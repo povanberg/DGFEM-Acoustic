@@ -46,15 +46,26 @@ else
 	echo "Lapack/Blas installed.";
 fi
 
+#if [ ! -d "3rdParty/gmsh" ]; then
+#	echo "Gmsh not found, installing...";
+#	wget http://gmsh.info/bin/Linux/gmsh-4.1.5-Linux64-sdk.tgz
+#	tar -xf gmsh-4.1.5-Linux64-sdk.tgz
+#	rm -rf gmsh-4.1.5-Linux64-sdk.tgz
+#	mv gmsh-4.1.5-Linux64-sdk 3rdParty/gmsh
+#	echo "Gmsh installed."
+#else
+#       echo "Gmsh found.";
+
 if [ ! -d "3rdParty/gmsh" ]; then
 	echo "Gmsh not found, installing...";
-	wget http://gmsh.info/bin/Linux/gmsh-4.1.5-Linux64-sdk.tgz
-	tar -xf gmsh-4.1.5-Linux64-sdk.tgz
-	rm -rf gmsh-4.1.5-Linux64-sdk.tgz
-	mv gmsh-4.1.5-Linux64-sdk 3rdParty/gmsh
+	wget http://gmsh.info/bin/Linux/gmsh-4.10.5-Linux64-sdk.tgz
+	tar -xf gmsh-4.10.5-Linux64-sdk.tgz
+	rm -rf gmsh-4.10.5-Linux64-sdk.tgz
+	mv gmsh-4.10.5-Linux64-sdk 3rdParty/gmsh
 	echo "Gmsh installed."
 else
        echo "Gmsh found.";
+       
 fi
 cd 3rdParty/gmsh/
 export FC=gfortran

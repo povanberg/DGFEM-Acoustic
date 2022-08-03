@@ -94,7 +94,8 @@ namespace solver
             for (int n = 0; n < mesh.getNumNodes(); n++)
             {
                 std::vector<double> coord, paramCoord;
-                gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
+                int _dim, _tag;
+                gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord, _dim, _tag);
                 if (pow(coord[0] - config.sources[i][1], 2) +
                         pow(coord[1] - config.sources[i][2], 2) +
                         pow(coord[2] - config.sources[i][3], 2) <
@@ -237,6 +238,7 @@ namespace solver
         /** Precomputation (constants over time) */
         screen_display::write_string("\t>>> Precomputation", BLUE);
         mesh.precomputeMassMatrix();
+        screen_display::write_string("\t>>> precomputeMassMatrix", BLUE);
 
         /** Source */
         std::vector<std::vector<int>> srcIndices;
@@ -246,7 +248,8 @@ namespace solver
             for (int n = 0; n < mesh.getNumNodes(); n++)
             {
                 std::vector<double> coord, paramCoord;
-                gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
+                int _dim, _tag;
+                gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord, _dim, _tag);
                 if (pow(coord[0] - config.sources[i][1], 2) +
                         pow(coord[1] - config.sources[i][2], 2) +
                         pow(coord[2] - config.sources[i][3], 2) <

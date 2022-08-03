@@ -23,23 +23,65 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
     /******************************
      *          Elements          *
      ******************************/
+
     screen_display::write_string("Load data", GREEN);
+
+    auto pp = [](const std::string &label, const std::vector<double> &v, int mult)
+    {
+        std::cout << " * " << v.size() / mult << " " << label << ": ";
+        for (auto c : v)
+            std::cout << c << " ";
+        std::cout << "\n";
+    };
 
     auto start = std::chrono::system_clock::now();
     m_elDim = gmsh::model::getDimension();
     gmsh::model::mesh::getElementTypes(m_elType, m_elDim);
+    int _numPrimaryNodes = 0;
+
     gmsh::model::mesh::getElementProperties(m_elType[0], m_elName, m_elDim,
-                                            m_elOrder, m_elNumNodes, m_elParamCoord);
+                                            m_elOrder, m_elNumNodes, m_elParamCoord, _numPrimaryNodes);
+
     gmsh::model::mesh::getElementsByType(m_elType[0], m_elTags, m_elNodeTags);
     m_elNum = (int)m_elTags.size();
     m_elIntType = "Gauss" + std::to_string(2 * m_elOrder);
-    gmsh::model::mesh::getJacobians(m_elType[0], m_elIntType, m_elJacobians,
+
+    // std::vector<double> m_elWeight;
+    gmsh::model::mesh::getIntegrationPoints(m_elType[0], m_elIntType, m_elParamCoord, m_elWeight);
+    // pp("integration points to integrate order " + std::to_string(m_elOrder*2) + " polynomials", m_elParamCoord, 3);
+
+    screen_display::write_string("Elements - Compute Jacobian", GREEN);
+
+    // std::vector<double> _localCoord;
+
+    // screen_display::write_string("flag 0", RED);
+
+    int _numOrientations;
+    // const std::vector<int>& wantedOrientations = std::vector<int>()
+    int _numComponents;
+    gmsh::model::mesh::getBasisFunctions(m_elType[0], m_elParamCoord, config.elementType,
+                                         _numComponents, m_elBasisFcts, _numOrientations);
+    gmsh::model::mesh::getBasisFunctions(m_elType[0], m_elParamCoord, "Grad" + config.elementType,
+                                         _numComponents, m_elUGradBasisFcts, _numOrientations);
+
+    // screen_display::write_string(m_elIntType, RED);
+    // screen_display::write_string("Grad" + config.elementType, RED);
+    // gmsh::model::mesh::getBasisFunctions(m_elType[0], m_elIntType, "Grad" + config.elementType,
+    //                                      m_elIntParamCoords, *new int, m_elUGradBasisFcts);
+
+    gmsh::model::mesh::getJacobians(m_elType[0], m_elParamCoord, m_elJacobians,
                                     m_elJacobianDets, m_elIntPtCoords);
+
+    // std::ofstream _outfile_("m_elJacobians.txt");
+    // _outfile_ << "size=" << m_elJacobians.size() << std::endl;
+    // for (size_t i = 0; i < m_elJacobians.size(); i++)
+    //     _outfile_ << m_elJacobians[i] << std::endl;
+    // _outfile_.close();
+
+    // pp("Jacobian determinants at integration points", m_elJacobianDets, 1);
+
     m_elNumIntPts = (int)m_elJacobianDets.size() / m_elNum;
-    gmsh::model::mesh::getBasisFunctions(m_elType[0], m_elIntType, config.elementType,
-                                         m_elIntParamCoords, *new int, m_elBasisFcts);
-    gmsh::model::mesh::getBasisFunctions(m_elType[0], m_elIntType, "Grad" + config.elementType,
-                                         m_elIntParamCoords, *new int, m_elUGradBasisFcts);
+
     auto end = std::chrono::system_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     screen_display::write_value("Elapsed time:", elapsed.count() * 1.0e-6, "s", BLUE);
@@ -59,12 +101,13 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
      * NB: Instead of transposing, we take advantages of the fact
      * Lapack/Blas use column major while Gmsh provides row major.
      */
-    screen_display::write_string("Elements - Compute Jacobian", GREEN);
+
     start = std::chrono::system_clock::now();
     std::vector<double> jacobian(m_elDim * m_elDim);
     m_elGradBasisFcts.resize(m_elNum * m_elNumNodes * m_elNumIntPts * 3);
+
     // #pragma omp parallel for
-    for (int el = 0; el < m_elNum; ++el)
+    for (size_t el = 0; el < m_elNum; ++el)
     {
         for (int g = 0; g < m_elNumIntPts; ++g)
         {
@@ -76,14 +119,22 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
                 {
                     for (int j = 0; j < m_elDim; ++j)
                     {
+                        // screen_display::write_value("elJacobian(el, g, i, j)",elJacobian(el, g, i, j),"");
                         jacobian[i * m_elDim + j] = elJacobian(el, g, i, j);
                     }
                 }
+
+                // std::cout<<"el = "<<el<<" - g = "<<g<<" - f = "<<f<<std::endl;
+                // screen_display::write_value("elUGradBasisFct(g, f)",elUGradBasisFct(g, f),"",BLUE);
+                // screen_display::write_value("elGradBasisFct(el, g, f)",elGradBasisFct(el, g, f),"",BLUE);
                 std::copy(&elUGradBasisFct(g, f), &elUGradBasisFct(g, f) + m_elDim, &elGradBasisFct(el, g, f));
                 eigen::solve(jacobian.data(), &elGradBasisFct(el, g, f), m_elDim);
+                // screen_display::write_string("flag 1", RED);
             }
         }
     }
+
+    // pp("Element jacobian", jacobian, 1);
 
     assert(m_elType.size() == 1);
     assert(m_elNodeTags.size() == m_elNum * m_elNumNodes);
@@ -121,6 +172,10 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
 
     m_fType = gmsh::model::mesh::getElementType(m_fName, m_elOrder);
 
+    // screen_display::write_value("m_fType", m_fType, "", RED);
+    // screen_display::write_string(m_fName,RED);
+    // getchar();
+
     /**
      * [1] Get Faces for all elements
      */
@@ -128,6 +183,7 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
         gmsh::model::mesh::getElementEdgeNodes(m_elType[0], m_elFNodeTags, -1);
     else
         gmsh::model::mesh::getElementFaceNodes(m_elType[0], 3, m_elFNodeTags, -1);
+
     m_fNumPerEl = m_elFNodeTags.size() / (m_elNum * m_fNumNodes);
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -138,7 +194,12 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
      */
     screen_display::write_string("Remove the faces counted two times", GREEN);
     start = std::chrono::system_clock::now();
+
+    //! ////////////////////////////////
     getUniqueFaceNodeTags();
+    // getUniqueFaceNodeTags_test();
+    //! ////////////////////////////////
+
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     screen_display::write_value("Elapsed time:", elapsed.count() * 1.0e-6, "s", BLUE);
@@ -151,10 +212,25 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
     screen_display::write_string("Create a single entity");
     start = std::chrono::system_clock::now();
     m_fEntity = gmsh::model::addDiscreteEntity(m_fDim);
-    gmsh::model::mesh::setElementsByType(m_fDim, m_fEntity, m_fType, {}, m_fNodeTags);
-    m_fNodeTags.clear();
-    gmsh::model::mesh::getElementsByType(m_fType, m_fTags, m_fNodeTags, m_fEntity);
-    m_fNum = m_fTags.size();
+
+    // gmsh::model::mesh::
+
+    gmsh::model::mesh::addElementsByType(m_fEntity, m_fType, {}, m_fNodeTags);
+    // screen_display::write_vector_to_file("node_tags2.txt", m_fNodeTags, 2);
+    // gmsh::model::mesh::setElementsByType(m_fDim, m_fEntity, m_fType, {}, m_fNodeTags);
+    // m_fNodeTags.clear();
+    // gmsh::model::mesh::getElementsByType(m_fType, m_fTags, m_fNodeTags, m_fEntity);
+    // screen_display::write_vector_to_file("node_tags3.txt", m_fNodeTags, 2);
+
+    // screen_display::write_value("2# m_fNodeTags size", m_fNodeTags.size()); //! 52720.000000
+    // getchar();
+
+    m_fIntType = m_elIntType;
+
+    gmsh::model::mesh::getIntegrationPoints(m_fType, m_fIntType, m_fIntParamCoords, m_fWeight);
+
+    // m_fNum = m_fTags.size();
+    m_fNum = m_fNodeTags.size() / m_fNumNodes;
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     screen_display::write_value("Elapsed time:", elapsed.count() * 1.0e-6, "s", BLUE);
@@ -166,13 +242,47 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
     screen_display::write_string("Faces - Compute Jacobian");
     start = std::chrono::system_clock::now();
     m_fIntType = m_elIntType;
-    gmsh::model::mesh::getJacobians(m_fType, m_fIntType, m_fJacobians,
-                                    m_fJacobianDets, m_fIntPtCoords, m_fEntity);
+
+    // const int elementType,
+    // const std::vector<double>& localCoord,
+    // std::vector<double>& jacobians,
+    // std::vector<double>& determinants,
+    // std::vector<double>& coord,
+    // const int tag = -1,
+    // const std::size_t task = 0,
+    // const std::size_t numTasks = 1
+
+    // std::vector<double> m_fParamCoord;
+
+    gmsh::model::mesh::getBasisFunctions(m_fType, m_fIntParamCoords, config.elementType, *new int, m_fBasisFcts, _numOrientations);
+    // pp("basis functions at integration points", m_fBasisFcts, 1);
+    // screen_display::write_string("flag 1");
+    gmsh::model::mesh::getBasisFunctions(m_fType, m_fIntParamCoords, "Grad" + config.elementType, *new int, m_fUGradBasisFcts, _numOrientations);
+    // pp("basis functions at integration points", m_fUGradBasisFcts, 1);
+    // screen_display::write_string("flag 2");
+    gmsh::model::mesh::getJacobians(m_fType, m_fIntParamCoords, m_fJacobians, m_fJacobianDets, m_fIntPtCoords, m_fEntity);
+    // screen_display::write_string("flag 3");
+    // getchar();
+    // gmsh::model::mesh::getJacobians(m_fType, m_fIntType, m_fJacobians,
+    //                                 m_fJacobianDets, m_fIntPtCoords, m_fEntity);
+
+    // gmsh::model::mesh::getJacobians(m_elType[0], m_elParamCoord, m_elJacobians,
+    //                                 m_elJacobianDets, m_elIntPtCoords);
+
+    // pp("m_fIntPtCoords", m_fIntPtCoords, 1);
+
+    // screen_display::write_vector_to_file("m_fJacobianDets.txt", m_fJacobianDets, 9);
+    // screen_display::write_value("m_fNum",m_fNum);
+
     m_fNumIntPts = (int)m_fJacobianDets.size() / m_fNum;
-    gmsh::model::mesh::getBasisFunctions(m_fType, m_fIntType, config.elementType,
-                                         m_fIntParamCoords, *new int, m_fBasisFcts);
-    gmsh::model::mesh::getBasisFunctions(m_fType, m_fIntType, "Grad" + config.elementType,
-                                         m_fIntParamCoords, *new int, m_fUGradBasisFcts);
+
+    screen_display::write_value("jacobian size", m_fJacobians.size(), "");
+    screen_display::write_value("m_fNum", m_fNum, "");
+    screen_display::write_value("m_fNumIntPts", m_fNumIntPts, "");
+    screen_display::write_value("m_fNumNodes", m_fNumNodes, "");
+    screen_display::write_value("m_fIntParamCoords size", m_fIntParamCoords.size(), "", RED);
+    screen_display::write_value("m_fIntPtCoords size", m_fIntPtCoords.size(), "", RED);
+
     /**
      * See element part for explanation. (line 40)
      */
@@ -196,6 +306,9 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
             }
         }
     }
+
+    // pp("m_fJacobians", m_fJacobians, 3);
+
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     screen_display::write_value("Elapsed time:", elapsed.count() * 1.0e-6, "s", BLUE);
@@ -250,18 +363,21 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
         }
     }
 
-    std::vector<double> viewNormals;
-    // #pragma omp parallel for
-    for (int f = 0; f < m_fNum; f++)
-    {
-        for (int g = 0; g < m_fNumIntPts; ++g)
-        {
-            for (int x = 0; x < 3; ++x)
-                viewNormals.push_back(fIntPtCoord(f, g, x));
-            for (int x = 0; x < 3; ++x)
-                viewNormals.push_back(-fNormal(f, g, x));
-        }
-    }
+    // std::vector<double> viewNormals;
+    // // #pragma omp parallel for
+    // for (int f = 0; f < m_fNum; f++)
+    // {
+    //     for (int g = 0; g < m_fNumIntPts; ++g)
+    //     {
+    //         for (int x = 0; x < 3; ++x)
+    //             viewNormals.push_back(fIntPtCoord(f, g, x));
+    //         for (int x = 0; x < 3; ++x)
+    //             viewNormals.push_back(-fNormal(f, g, x));
+    //     }
+    // }
+
+    // screen_display::write_vector_to_file("viewNormals.txt", viewNormals, 6);
+    // getchar();
     // int normalTag = 1;
     // gmsh::view::add("normals", normalTag);
     // gmsh::view::addListData(normalTag, "VP", m_fNum * m_fNumIntPts, viewNormals);
@@ -270,10 +386,19 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
     if (m_elDim == 3 && m_elOrder != 1)
         fc = -1;
 
-    assert(m_elFNodeTags.size() == m_elNum * m_fNumPerEl * m_fNumNodes);
-    assert(m_fJacobianDets.size() == m_fNum * m_fNumIntPts);
-    assert(m_fBasisFcts.size() == m_fNumNodes * m_fNumIntPts);
-    assert(m_fNormals.size() == m_Dim * m_fNum * m_fNumIntPts);
+    // screen_display::write_value("m_fJacobianDets.size()",m_fJacobianDets.size(),"",RED);
+
+    // assert(screen_display::write_if_false(m_elFNodeTags.size() == m_elNum * m_fNumPerEl * m_fNumNodes, "m_elFNodeTags size error"));
+    // assert(screen_display::write_if_false(m_fJacobianDets.size() == m_fNum * m_fNumIntPts, "m_fJacobianDets size error"));
+    // assert(screen_display::write_if_false(m_fBasisFcts.size() == m_fNumNodes * m_fNumIntPts, "m_fBasisFcts size error"));
+    // assert(screen_display::write_if_false(m_fNormals.size() == m_Dim * m_fNum * m_fNumIntPts, "m_fNormals size error"));
+
+    screen_display::write_if_false(m_elFNodeTags.size() == m_elNum * m_fNumPerEl * m_fNumNodes, "m_elFNodeTags size error");
+    screen_display::write_if_false(m_fJacobianDets.size() == m_fNum * m_fNumIntPts, "m_fJacobianDets size error");
+    screen_display::write_if_false(m_fBasisFcts.size() == m_fNumNodes * m_fNumIntPts, "m_fBasisFcts size error");
+    screen_display::write_if_false(m_fNormals.size() == m_Dim * m_fNum * m_fNumIntPts, "m_fNormals size error");
+
+    // pp("m_fJacobianDets", m_fJacobianDets, 1);
 
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -288,6 +413,7 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
     gmsh::logger::write("Integration type : " + m_fIntType);
     gmsh::logger::write("Integration Nbr points : " + std::to_string(m_fNumIntPts));
 
+    // getchar();
     /******************************
      *       Connectivity         *
      ******************************/
@@ -300,13 +426,18 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
     start = std::chrono::system_clock::now();
 
     m_fNbrElIds.resize(m_fNum);
+
+    screen_display::write_value("m_fNodeTagsOrdered size",m_fNodeTagsOrdered.size());
     // #pragma omp parallel for
-    for (int el = 0; el < m_elNum; ++el)
+
+    for (size_t el = 0; el < m_elNum; ++el)
     {
-        for (int elF = 0; elF < m_fNumPerEl; ++elF)
+        for (size_t elF = 0; elF < m_fNumPerEl; ++elF)
         {
             for (int f = 0; f < m_fNum; ++f)
             {
+                
+                
                 if (std::equal(&fNodeTagOrdered(f), &fNodeTagOrdered(f) + m_fNumNodes,
                                &elFNodeTagOrdered(el, elF)))
                 {
@@ -316,6 +447,10 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
             }
         }
     }
+
+    screen_display::write_vector_to_file("m_elFIds.txt", m_elFIds, 3);
+    // screen_display::write_vector_to_file("m_fNbrElIds.txt",m_fNbrElIds,2);
+
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     screen_display::write_value("Elapsed time:", elapsed.count() * 1.0e-6, "s", BLUE);
@@ -333,7 +468,7 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
     {
         for (int nf = 0; nf < m_fNumNodes; ++nf)
         {
-            for (int el : m_fNbrElIds[f])
+            for (size_t el : m_fNbrElIds[f])
             {
                 for (int nel = 0; nel < m_elNumNodes; ++nel)
                 {
@@ -366,26 +501,45 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
     double dotProduct;
     std::vector<double> m_elBarycenters, fNodeCoord(3), elOuterDir(3), paramCoords;
     gmsh::model::mesh::getBarycenters(m_elType[0], -1, false, true, m_elBarycenters);
+    // screen_display::write_string("flag 1", RED);
 
+    // screen_display::write_value("m_elNum",m_elNum,"",BLUE);
+    // screen_display::write_value("m_fNumPerEl",m_fNumPerEl,"",BLUE);
+    // screen_display::write_value("m_fNum",m_fNum,"",BLUE);
     // #pragma omp parallel for
-    for (int el = 0; el < m_elNum; ++el)
+    m_elFOrientation.clear();
+    for (size_t el = 0; el < m_elNum; ++el)
     {
         for (int f = 0; f < m_fNumPerEl; ++f)
         {
             dotProduct = 0.0;
-            gmsh::model::mesh::getNode(elFNodeTag(el, f), fNodeCoord, paramCoords);
+
+            int _dim, _tag;
+
+            gmsh::model::mesh::getNode(elFNodeTag(el, f), fNodeCoord, paramCoords, _dim, _tag);
+
             for (int x = 0; x < m_Dim; x++)
             {
+
                 elOuterDir[x] = fNodeCoord[x] - m_elBarycenters[el * 3 + x];
                 // #pragma omp atomic
                 dotProduct += elOuterDir[x] * fNormal(elFId(el, f), 0, x);
             }
-            if (dotProduct >= 0)
-                m_elFOrientation.push_back(1);
-            else
-                m_elFOrientation.push_back(-1);
+
+            size_t value = (dotProduct >= 0) ? 1 : -1;
+            // value = (value==1) ? value : value;
+            m_elFOrientation.push_back(value);
+
+            // if (dotProduct >= 0)
+            //     m_elFOrientation.push_back(1);
+            // else
+            //     m_elFOrientation.push_back(-1);
         }
     }
+
+    // screen_display::write_vector_to_file("m_elFOrientation.txt", m_elFOrientation, 1);
+    // getchar();
+
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     screen_display::write_value("Elapsed time:", elapsed.count() * 1.0e-6, "s", BLUE);
@@ -398,7 +552,7 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
     screen_display::write_string("Reclassification of the neighbouring elements", GREEN);
     start = std::chrono::system_clock::now();
 
-    int elf;
+    size_t elf;
     // #pragma omp parallel for
     for (int f = 0; f < m_fNum; ++f)
     {
@@ -481,13 +635,14 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
      * Default  : Absorbing (!= 1 or 2)
      */
     m_fBC.resize(m_fNum);
-    std::vector<int> nodeTags;
+    std::vector<size_t> nodeTags;
     std::vector<double> coord;
     for (auto const &physBC : config.physBCs)
     {
         auto physTag = physBC.first;
         auto BCtype = physBC.second.first;
         auto BCvalue = physBC.second.second;
+
         gmsh::model::mesh::getNodesForPhysicalGroup(m_fDim, physTag, nodeTags, coord);
         if (BCtype == "Reflecting")
         {
@@ -582,10 +737,12 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
 void Mesh::precomputeMassMatrix()
 {
     m_elMassMatrices.resize(m_elNum * m_elNumNodes * m_elNumNodes);
-#pragma omp parallel for
-    for (int el = 0; el < m_elNum; ++el)
+    // #pragma omp parallel for
+    for (size_t el = 0; el < m_elNum; ++el)
     {
+        // screen_display::write_value("element id",el,"",GREEN);
         getElMassMatrix(el, true, &elMassMatrix(el));
+        // getchar();
     }
 }
 
@@ -596,8 +753,9 @@ void Mesh::precomputeMassMatrix()
  * @param inverse boolean : Whether or not the mass matrix must be inverted before returned
  * @param elMassMatrix double array : Output storage of the element mass matrix
  */
-void Mesh::getElMassMatrix(const int el, const bool inverse, double *elMassMatrix)
+void Mesh::getElMassMatrix(const size_t el, const bool inverse, double *elMassMatrix)
 {
+
     for (int i = 0; i < m_elNumNodes; ++i)
     {
         for (int j = 0; j < m_elNumNodes; ++j)
@@ -605,11 +763,19 @@ void Mesh::getElMassMatrix(const int el, const bool inverse, double *elMassMatri
             elMassMatrix[i * m_elNumNodes + j] = 0.0;
             for (int g = 0; g < m_elNumIntPts; g++)
             {
+                // std::cout<<"(i,j,g)=("<<i<<","<<j<<","<<g<<")"<<std::endl;
+                // screen_display::write_value("elBasisFct(g, i)=",elBasisFct(g, i),"",RED);
+                // screen_display::write_value("elBasisFct(g, j)=",elBasisFct(g, j),"",RED);
+                // screen_display::write_value("m_elWeight[g]=",m_elWeight[g],"",RED);
+                // screen_display::write_value("elJacobianDet(el, g)=",elJacobianDet(el, g),"",RED);
+                // getchar();
+
                 elMassMatrix[i * m_elNumNodes + j] += elBasisFct(g, i) * elBasisFct(g, j) *
-                                                      elWeight(g) * elJacobianDet(el, g);
+                                                      m_elWeight[g] * elJacobianDet(el, g);
             }
         }
     }
+
     if (inverse)
         eigen::inverse(elMassMatrix, m_elNumNodes);
 }
@@ -622,7 +788,7 @@ void Mesh::getElMassMatrix(const int el, const bool inverse, double *elMassMatri
  * @param u double array : solution at element node
  * @param elStiffVector double array : Output storage of the element stiffness vector
  */
-void Mesh::getElStiffVector(const int el, std::vector<std::vector<double>> &Flux,
+void Mesh::getElStiffVector(const size_t el, std::vector<std::vector<double>> &Flux,
                             std::vector<double> &u, double *elStiffVector)
 {
     int jId;
@@ -635,7 +801,7 @@ void Mesh::getElStiffVector(const int el, std::vector<std::vector<double>> &Flux
             for (int g = 0; g < m_elNumIntPts; g++)
             {
                 elStiffVector[i] += eigen::dot(Flux[jId].data(), &elGradBasisFct(el, g, i), m_Dim) *
-                                    elBasisFct(g, j) * elWeight(g) * elJacobianDet(el, g);
+                                    elBasisFct(g, j) * m_elWeight[g] * elJacobianDet(el, g);
             }
         }
     }
@@ -655,7 +821,7 @@ void Mesh::precomputeFlux(std::vector<double> &u, std::vector<std::vector<double
 #pragma omp parallel num_threads(config.numThreads)
     {
         // Memory allocation (Cross-plateform compatibility)
-        int elUp, elDn;
+        size_t elUp, elDn;
         std::vector<double> FIntPts(m_fNumIntPts, 0);
         std::vector<double> Fnum(m_Dim, 0);
 
@@ -696,7 +862,7 @@ void Mesh::precomputeFlux(std::vector<double> &u, std::vector<std::vector<double
                 {
                     ////////////////////////
                     // #pragma omp atomic
-                    fFlux(f, n) += fWeight(g) * fBasisFct(g, n) * FIntPts[g] * fJacobianDet(f, g);
+                    fFlux(f, n) += m_fWeight[g] * fBasisFct(g, n) * FIntPts[g] * fJacobianDet(f, g);
                 }
             }
         }
@@ -710,7 +876,7 @@ void Mesh::precomputeFlux(std::vector<double> &u, std::vector<std::vector<double
  * @param el integer : element id
  * @param F double array : Output element flux
  */
-void Mesh::getElFlux(const int el, double *F)
+void Mesh::getElFlux(const size_t el, double *F)
 {
     int i;
     std::fill(F, F + m_elNumNodes, 0);
@@ -739,7 +905,7 @@ void Mesh::updateFlux(std::vector<std::vector<double>> &u, std::vector<std::vect
 {
 
     // #pragma omp parallel for
-    for (int el = 0; el < m_elNum; ++el)
+    for (size_t el = 0; el < m_elNum; ++el)
     {
         for (int n = 0; n < m_elNumNodes; ++n)
         {
@@ -874,10 +1040,10 @@ void Mesh::getUniqueFaceNodeTags()
     m_fNodeTagsOrdered = m_elFNodeTagsOrdered;
 
     // Remove identical faces by comparing ordered arrays.
-    std::vector<int>::iterator it_delete;
-    std::vector<int>::iterator it_deleteUnordered;
-    std::vector<int>::iterator it_unordered = m_fNodeTags.begin();
-    for (std::vector<int>::iterator it_ordered = m_fNodeTagsOrdered.begin(); it_ordered != m_fNodeTagsOrdered.end();)
+    std::vector<size_t>::iterator it_delete;
+    std::vector<size_t>::iterator it_deleteUnordered;
+    std::vector<size_t>::iterator it_unordered = m_fNodeTags.begin();
+    for (std::vector<size_t>::iterator it_ordered = m_fNodeTagsOrdered.begin(); it_ordered != m_fNodeTagsOrdered.end();)
     {
 
         it_deleteUnordered = it_unordered + m_fNumNodes;
@@ -899,6 +1065,64 @@ void Mesh::getUniqueFaceNodeTags()
             it_unordered += m_fNumNodes;
         }
     }
+
+    screen_display::write_vector_to_file("m_fNodeTags_2.txt", m_fNodeTags, m_fNumNodes);
+    // getchar();
+}
+
+void Mesh::getUniqueFaceNodeTags_test()
+{
+
+    std::vector<size_t> edge_tags, face_tags;
+    // std::vector<double> coord_tmp;
+    // std::vector<double> param_coord_tmp;
+    // gmsh::model::mesh::getNodes(node_tags, coord_tmp, param_coord_tmp);
+    // coord_tmp.clear();
+    // param_coord_tmp.clear();
+
+    std::vector<int> faceOrientations;
+    std::vector<int> edgeOrientations;
+
+    // m_fNodeTags.clear();
+
+    m_elFNodeTagsOrdered = m_elFNodeTags;
+
+    for (int i = 0; i < m_elFNodeTagsOrdered.size(); i += m_fNumNodes)
+        std::sort(m_elFNodeTagsOrdered.begin() + i, m_elFNodeTagsOrdered.begin() + (i + m_fNumNodes));
+
+    if (m_fDim < 2)
+    {
+        screen_display::write_string("Create and get all egdes", BLUE);
+        gmsh::model::mesh::createEdges();
+        gmsh::model::mesh::getAllEdgenumThreadsnumThreadss(edge_tags, m_fNodeTags);
+
+        // gmsh::model::mesh::getEdges(m_fNodeTags, edge_tags, edgeOrientations);
+        // screen_display::write_vector_to_file("edge_tags.txt", edge_tags, 3);
+
+        // edgeOrientations.clear();
+        edge_tags.clear();
+    }
+    else
+    {
+        screen_display::write_string("Create and get all faces", BLUE);
+        gmsh::model::mesh::createFaces();
+        gmsh::model::mesh::getAllFaces(3, face_tags, m_fNodeTags);
+        face_tags.clear();
+        // faceOrientations.clear();
+    }
+
+    m_fNodeTagsOrdered = m_fNodeTags;
+
+    for (int i = 0; i < m_fNodeTagsOrdered.size(); i += m_fNumNodes)
+        std::sort(m_fNodeTagsOrdered.begin() + i, m_fNodeTagsOrdered.begin() + (i + m_fNumNodes));
+
+    screen_display::write_vector_to_file("node_tags.txt", m_fNodeTags, 2);
+    // getchar();
+
+    // gmsh::model::mesh::getEdges(m_fNodeTags, node_tags, edgeOrientations);
+    //   gmsh::model::mesh::getFaces(m_fType, m_elFNodeTags, m_fNodeTags,faceOrientations);
+    //  faceOrientations.clear();
+    // edgeOrientations.clear();
 }
 
 /**
@@ -909,15 +1133,15 @@ void Mesh::writeVTU(std::string filename, std::vector<std::vector<double>> &u)
 {
     screen_display::write_string("Write VTU at " + filename, BOLDRED);
 
-    int eltype;
-    std::vector<int> node_tag;
+    size_t eltype;
+    std::vector<size_t> node_tag;
     std::vector<double> coord_tmp;
     std::vector<double> param_coord_tmp;
     gmsh::model::mesh::getNodes(node_tag, coord_tmp, param_coord_tmp);
     coord_tmp.clear();
     param_coord_tmp.clear();
 
-    int ElNumNodes = (m_elDim == 2) ? 3 : 4; //! 3 points: triangle , 4 points : tetrahedral
+    size_t elNumNodes = (m_elDim == 2) ? 3 : 4; //! 3 points: triangle , 4 points : tetrahedral
 
     std::ofstream file;
     file.open((filename).c_str(), std::ios::out);
@@ -932,7 +1156,8 @@ void Mesh::writeVTU(std::string filename, std::vector<std::vector<double>> &u)
             for (auto n : node_tag)
             {
                 std::vector<double> coord, paramCoord;
-                gmsh::model::mesh::getNode(n, coord, paramCoord);
+                int _dim, _tag;
+                gmsh::model::mesh::getNode(n, coord, paramCoord, _dim, _tag);
                 file << std::setw(32) << std::setprecision(16) << std::scientific << coord[0];
                 file << std::setw(32) << std::setprecision(16) << std::scientific << coord[1];
                 file << std::setw(32) << std::setprecision(16) << std::scientific << coord[2] << std::endl;
@@ -948,7 +1173,7 @@ void Mesh::writeVTU(std::string filename, std::vector<std::vector<double>> &u)
 
             for (size_t i = 0; i < getElNum(); i++)
             {
-                for (size_t j = 0; j < ElNumNodes; j++) /*getElNumNodes()*/
+                for (size_t j = 0; j < elNumNodes; j++) /*getElNumNodes()*/
                 {
                     file << elNodeTag(i, j) - 1 << "\t";
                 }
@@ -961,7 +1186,7 @@ void Mesh::writeVTU(std::string filename, std::vector<std::vector<double>> &u)
             size_t offset = 0;
             for (size_t i = 0; i < getElNum(); i++)
             {
-                offset += ElNumNodes;
+                offset += elNumNodes;
                 file << offset << std::endl;
             }
 

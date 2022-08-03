@@ -9,13 +9,13 @@
 #SBATCH --partition=defq 
 #SBATCH --output=out.txt
 
-module load scalapack/gcc/64/1.8.0
-module load gcc/4.9.2
-export CC=gcc
-export CXX=g++
-export FC=gfortran
-export OMP_NUM_THREADS=16
-export OMP_CANCELLATION=true
+# module load scalapack/gcc/64/1.8.0
+# module load gcc/4.9.2
+# export CC=gcc
+# export CXX=g++
+# export FC=gfortran
+# export OMP_NUM_THREADS=16
+# export OMP_CANCELLATION=true
 
-cd $HOME/MATH0471-DG/build/bin
-srun ./dgalerkin ../../doc/2d/disk.msh ../../doc/config/config.conf
+cd ../build/bin
+./dgalerkin ../../doc/2d/disk.msh ../../doc/config/config.conf

@@ -3,6 +3,9 @@
 
 #include <iomanip>
 #include <iostream>
+#include <vector>
+#include <fstream>
+// #include <assert.h>
 
 //! added by Sofiane KHELLADI in 01/04/2022 /////////////////////
 #define RESET "\033[0m"
@@ -37,9 +40,25 @@ namespace screen_display
 {
     void write_string(std::string text, std::string color = YELLOW);
 
-    void write_value(std::string name, double value, std::string unit, std::string color);
+    void write_value(std::string name, double value, std::string unit="", std::string color=YELLOW);
     
-    void write_value_r(std::string name, double value, std::string unit, std::string color, size_t precision);
+    void write_value_r(std::string name, double value, std::string unit="", std::string color=YELLOW, size_t precision=3);
+
+    bool write_if_false(const bool assertion, const char *msg);
+
+    template<typename T> void write_vector_to_file(std::string file_name, std::vector<T> vec, size_t offset=3)
+    {
+        std::ofstream outfile(file_name.c_str());
+        write_value("writing value in "+file_name+" - vector size",vec.size()/offset,"",BLUE);
+        for(size_t i=0;i<vec.size();i+=offset)
+        {
+           for(size_t j=0;j<offset;j++)
+                outfile<<vec[i+j]<<"\t";
+           outfile<<std::endl;      
+        }
+
+        outfile.close();
+    }
 }
 /////////////////////////
 

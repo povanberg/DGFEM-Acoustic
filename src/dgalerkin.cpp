@@ -25,7 +25,7 @@ int main(int argc, char **argv)
     std::string config_name = argv[2];
 
     gmsh::initialize();
-    gmsh::option::setNumber("General.Terminal", 1);
+    gmsh::option::setNumber("General.Terminal", 1.0);
     gmsh::open(msh_name);
 
     Config config = config::parseConfig(config_name);
@@ -44,10 +44,13 @@ int main(int argc, char **argv)
         double z = config.initConditions[i][3];
         double size = config.initConditions[i][4];
         double amp = config.initConditions[i][5];
+
+
         for (int n = 0; n < mesh.getNumNodes(); n++)
         {
             std::vector<double> coord, paramCoord;
-            gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord);
+            int _dim, _tag;
+            gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord,_dim, _tag);
             u[0][n] += amp * exp(-((coord[0] - x) * (coord[0] - x) +
                                    (coord[1] - y) * (coord[1] - y) +
                                    (coord[2] - z) * (coord[2] - z)) /

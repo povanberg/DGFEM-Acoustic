@@ -1094,7 +1094,7 @@ void Mesh::getUniqueFaceNodeTags_test()
     {
         screen_display::write_string("Create and get all egdes", BLUE);
         gmsh::model::mesh::createEdges();
-        gmsh::model::mesh::getAllEdgenumThreadsnumThreadss(edge_tags, m_fNodeTags);
+        gmsh::model::mesh::getAllEdges(edge_tags, m_fNodeTags);
 
         // gmsh::model::mesh::getEdges(m_fNodeTags, edge_tags, edgeOrientations);
         // screen_display::write_vector_to_file("edge_tags.txt", edge_tags, 3);

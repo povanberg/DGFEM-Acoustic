@@ -5,6 +5,12 @@ echo "*     Discontinuous galerkin setup.      *";
 echo "******************************************";
 echo
 
+echo "[0] Create some project directories if don't exist.";
+
+mkdir 3rdParty
+
+mkdir results
+
 echo "[1] Get depedencies and external libraries.";
 
 

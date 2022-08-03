@@ -41,6 +41,14 @@ cmake ../ -DCMAKE_BUILD_TYPE=Release  -G "Unix Makefiles" -DGMSH_INCLUDE_DIRS=".
 make -j4
 ```
 
+or simply use build.sh 
+```
+git clone https://gitlab.ensam.eu/khelladi/DGFEM-Acoustic.git
+cd DGFEM-Acoustic
+sh build.sh
+```
+
+
 ## Running the tests
 Once the sources sucessfully build, you can start using with the solver. It required two arguments: a mesh file created with Gmsh and a config file containing the solver options. Examples of mesh files and config files are given [here](https://github.com/pvanberg/MATH0471-DG/tree/master/doc).
 

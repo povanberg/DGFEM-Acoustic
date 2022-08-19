@@ -10,8 +10,6 @@ This repository implements a discontinuous Galerkin finite element method (DGFEM
 - Absorbing and reflecting boundaries
 - Complex geometry and unstructured grid
 
-For more information, a detailled report is available [here](https://github.com/pvanberg/DGFEM-Acoustic/blob/master/DGFEM_acoustic.pdf). 
-
 | Auditorium     | Isosurfaces     | Bulk|
 | ------------- |:-------------:| :-------------:| 
 | <img src="https://gitlab.ensam.eu/khelladi/DGFEM-Acoustic/-/raw/b1026a1c6b9d312d02f6f70e776ed98e054ef00a/assets/auditorium_source2_2.png" width="400" height="200" />    | <img src="https://gitlab.ensam.eu/khelladi/DGFEM-Acoustic/-/raw/b1026a1c6b9d312d02f6f70e776ed98e054ef00a/assets/auditorium_source_iso1.png" width="400" height="200" />  | <img src="https://gitlab.ensam.eu/khelladi/DGFEM-Acoustic/-/raw/b1026a1c6b9d312d02f6f70e776ed98e054ef00a/assets/auditorium_source_bulk1.png" width="400" height="200" /> |
@@ -21,7 +19,7 @@ For more information, a detailled report is available [here](https://github.com/
  	
 ### Prerequisites
 
-First, make sure the following libraries are installed. If you are running a linux distribution (ubuntu, debian, ...), an installation [script](https://github.com/pvanberg/MATH0471-DG/blob/master/build.sh) is provided. 
+First, make sure the following libraries are installed. If you are running a linux distribution (ubuntu, debian, ...), an installation [script](https://github.com/skhelladi/DGFEM-CAA/edit/development//build.sh) is provided. 
 
 ```
 Gmsh
@@ -34,8 +32,8 @@ OpenMP
 ### Installing
 
 ```
-git clone https://gitlab.ensam.eu/khelladi/DGFEM-Acoustic.git
-cd DGFEM-Acoustic
+git clone https://github.com/skhelladi/DGFEM-CAA.git
+cd DGFEM-CAA
 mkdir build && cd build
 cmake ../ -DCMAKE_BUILD_TYPE=Release  -G "Unix Makefiles" -DGMSH_INCLUDE_DIRS="../gmsh-4.10.5-Linux64-sdk/include" -DGMSH_LIBRARIES="../gmsh-4.10.5-Linux64-sdk/lib/libgmsh.so" -DGMSH_EXECUTABLE="../gmsh-4.10.5-Linux64-sdk/bin/gmsh" -DEIGEN_INCLUDE_DIRS="/usr/include/eigen3"
 make -j4
@@ -43,8 +41,8 @@ make -j4
 
 or simply use build.sh 
 ```
-git clone https://gitlab.ensam.eu/khelladi/DGFEM-Acoustic.git
-cd DGFEM-Acoustic
+git clone https://github.com/skhelladi/DGFEM-CAA.git
+cd DGFEM-CAA
 sh build.sh
 ```
 

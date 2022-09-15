@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+// #include<execution>
 // #include <assert.h>
 
 //! added by Sofiane KHELLADI in 01/04/2022 /////////////////////
@@ -36,6 +37,8 @@
 //////////////////////////////////////////////////////////////
 // using namespace std;
 
+
+
 namespace screen_display
 {
     void write_string(std::string text, std::string color = YELLOW);
@@ -59,6 +62,23 @@ namespace screen_display
 
         outfile.close();
     }
+
+    template<typename T> void write_vector_to_file(std::string file_name, std::vector<std::vector<T>> mat)
+    {
+        std::ofstream outfile(file_name.c_str());
+        write_string("writing value in "+file_name);
+        std::cout<<"Dimensions: "<<mat.size()<<"x"<<mat[0].size()<<std::endl;
+        for(size_t i=0;i<mat.size();i++)
+        {
+           for(size_t j=0;j<mat[i].size();j++)
+                outfile<<mat[i][j]<<"\t";
+           outfile<<std::endl;      
+        }
+
+        outfile.close();
+    }
+
+
 }
 /////////////////////////
 

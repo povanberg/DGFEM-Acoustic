@@ -3,5 +3,6 @@
 #export LD_LIBRARY_PATH=$GMSHLIBS:$LD_LIBRARY_PATH
 # build/bin/dgalerkin $1 $2
 
-#build/bin/dgalerkin doc/2d/square.msh doc/config/config.conf
+# build/bin/dgalerkin doc/2d/square.msh doc/config/Square.conf
 build/bin/dgalerkin doc/3d/cube.msh doc/config/Cube.conf
+# build/bin/dgalerkin doc/3d/sphere.msh doc/config/Cube.conf

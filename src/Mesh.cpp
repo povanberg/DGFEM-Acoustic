@@ -163,12 +163,10 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
     m_fDim = m_elDim - 1;
     m_fName = m_fDim == 0 ? "point" : m_fDim == 1 ? "line"
                                   : m_fDim == 2   ? "triangle"
-                                                  : // Quads not yet supported.
-                                      "None";
+                                                  : "None"; // Quads not yet supported.
     m_fNumNodes = m_fDim == 0 ? 1 : m_fDim == 1 ? 1 + m_elOrder
                                 : m_fDim == 2   ? (m_elOrder + 1) * (m_elOrder + 2) / 2
-                                                : // Triangular elements only.
-                                    0;
+                                                : 0; // Triangular elements only.
 
     m_fType = gmsh::model::mesh::getElementType(m_fName, m_elOrder);
 
@@ -196,14 +194,18 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
     start = std::chrono::system_clock::now();
 
     //! ////////////////////////////////
-    getUniqueFaceNodeTags();
     // getUniqueFaceNodeTags_test();
+    // screen_display::write_string("Press a key to continue...");
+    // getchar();
+    getUniqueFaceNodeTags();
     //! ////////////////////////////////
 
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     screen_display::write_value("Elapsed time:", elapsed.count() * 1.0e-6, "s", BLUE);
 
+    screen_display::write_string("Press a key to continue...");
+    getchar();
     /**
      * [3] Finally, we create a single entity containing all the
      *     unique faces. We call Gmsh with empty face tags and
@@ -276,12 +278,12 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
 
     m_fNumIntPts = (int)m_fJacobianDets.size() / m_fNum;
 
-    screen_display::write_value("jacobian size", m_fJacobians.size(), "");
-    screen_display::write_value("m_fNum", m_fNum, "");
-    screen_display::write_value("m_fNumIntPts", m_fNumIntPts, "");
-    screen_display::write_value("m_fNumNodes", m_fNumNodes, "");
-    screen_display::write_value("m_fIntParamCoords size", m_fIntParamCoords.size(), "", RED);
-    screen_display::write_value("m_fIntPtCoords size", m_fIntPtCoords.size(), "", RED);
+    // screen_display::write_value("jacobian size", m_fJacobians.size(), "");
+    // screen_display::write_value("m_fNum", m_fNum, "");
+    // screen_display::write_value("m_fNumIntPts", m_fNumIntPts, "");
+    // screen_display::write_value("m_fNumNodes", m_fNumNodes, "");
+    // screen_display::write_value("m_fIntParamCoords size", m_fIntParamCoords.size(), "", RED);
+    // screen_display::write_value("m_fIntPtCoords size", m_fIntPtCoords.size(), "", RED);
 
     /**
      * See element part for explanation. (line 40)
@@ -301,7 +303,7 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
                         jacobian[i * m_elDim + j] = fJacobian(f, g, i, j);
                     }
                 }
-                std::copy(&fUGradBasisFct(g, n), &fUGradBasisFct(g, n) + m_elDim, &fGradBasisFct(f, g, n));
+                std::copy(std::execution::par, &fUGradBasisFct(g, n), &fUGradBasisFct(g, n) + m_elDim, &fGradBasisFct(f, g, n));
                 eigen::solve(jacobian.data(), &fGradBasisFct(f, g, n), m_elDim);
             }
         }
@@ -427,33 +429,37 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
 
     m_fNbrElIds.resize(m_fNum);
 
-    screen_display::write_value("m_fNodeTagsOrdered size",m_fNodeTagsOrdered.size());
+    // screen_display::write_value("m_fNodeTagsOrdered size", m_fNodeTagsOrdered.size());
     // #pragma omp parallel for
-
     for (size_t el = 0; el < m_elNum; ++el)
     {
         for (size_t elF = 0; elF < m_fNumPerEl; ++elF)
         {
             for (int f = 0; f < m_fNum; ++f)
             {
-                
-                
-                if (std::equal(&fNodeTagOrdered(f), &fNodeTagOrdered(f) + m_fNumNodes,
-                               &elFNodeTagOrdered(el, elF)))
+
+                // #pragma omp critical
                 {
-                    m_elFIds.push_back(f);
-                    m_fNbrElIds[f].push_back(el);
+                    if (std::equal(&fNodeTagOrdered(f), &fNodeTagOrdered(f) + m_fNumNodes,
+                                   &elFNodeTagOrdered(el, elF)))
+                    {
+                        m_elFIds.push_back(f);
+                        m_fNbrElIds[f].push_back(el);
+                    }
                 }
             }
         }
     }
 
-    screen_display::write_vector_to_file("m_elFIds.txt", m_elFIds, 3);
+    // screen_display::write_vector_to_file("m_elFIds.txt", m_elFIds, 3);
     // screen_display::write_vector_to_file("m_fNbrElIds.txt",m_fNbrElIds,2);
 
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     screen_display::write_value("Elapsed time:", elapsed.count() * 1.0e-6, "s", BLUE);
+
+    screen_display::write_string("Press a key to continue...");
+    getchar();
     /**
      * For efficiency purposes we also directly store the mapping
      * between face node id and element node id. For example, the
@@ -501,13 +507,24 @@ Mesh::Mesh(std::string name, Config config) : name(name), config(config)
     double dotProduct;
     std::vector<double> m_elBarycenters, fNodeCoord(3), elOuterDir(3), paramCoords;
     gmsh::model::mesh::getBarycenters(m_elType[0], -1, false, true, m_elBarycenters);
-    // screen_display::write_string("flag 1", RED);
 
-    // screen_display::write_value("m_elNum",m_elNum,"",BLUE);
-    // screen_display::write_value("m_fNumPerEl",m_fNumPerEl,"",BLUE);
-    // screen_display::write_value("m_fNum",m_fNum,"",BLUE);
+    // screen_display::write_value("m_elNum", m_elNum, "", BLUE);
+    // screen_display::write_value("m_fNumPerEl", m_fNumPerEl, "", BLUE);
+    // screen_display::write_value("m_fNum", m_fNum, "", BLUE);
+    // screen_display::write_value("m_fNumNodes", m_fNumNodes, "", BLUE);
+    // screen_display::write_value("m_elFNodeTags size", m_elFNodeTags.size(), "", BLUE);
+    // getchar();
+
+    // screen_display::write_value("m_Dim", m_Dim, "", BLUE);
+    //  getchar();
+
+    // m_fNumPerEl * m_fNumNodes + f * m_fNumNodes
     // #pragma omp parallel for
     m_elFOrientation.clear();
+
+    std::cout << m_elFIds.size() << " : " << 36152 << " - " << 1 << " -->" << elFId(36152, 1) << std::endl;
+    getchar();
+
     for (size_t el = 0; el < m_elNum; ++el)
     {
         for (int f = 0; f < m_fNumPerEl; ++f)
@@ -1026,9 +1043,8 @@ void Mesh::updateFlux(std::vector<std::vector<double>> &u, std::vector<std::vect
 /**
  * List of nodes for each unique face given a list of node per face and per elements
  */
-void Mesh::getUniqueFaceNodeTags()
+/* void Mesh::getUniqueFaceNodeTags()
 {
-
     // Ordering per face for efficient comparison
     m_elFNodeTagsOrdered = m_elFNodeTags;
 
@@ -1039,13 +1055,16 @@ void Mesh::getUniqueFaceNodeTags()
     m_fNodeTags = m_elFNodeTags;
     m_fNodeTagsOrdered = m_elFNodeTagsOrdered;
 
+    // screen_display::write_vector_to_file("node_tags_full.txt", m_fNodeTags, m_fNumNodes);
+    //! TIMER start ////////////////////////////////
+    auto start = std::chrono::system_clock::now();
+    //! ////////////////////////////////////////////
     // Remove identical faces by comparing ordered arrays.
     std::vector<size_t>::iterator it_delete;
     std::vector<size_t>::iterator it_deleteUnordered;
     std::vector<size_t>::iterator it_unordered = m_fNodeTags.begin();
     for (std::vector<size_t>::iterator it_ordered = m_fNodeTagsOrdered.begin(); it_ordered != m_fNodeTagsOrdered.end();)
     {
-
         it_deleteUnordered = it_unordered + m_fNumNodes;
         for (it_delete = it_ordered + m_fNumNodes; it_delete != m_fNodeTagsOrdered.end(); it_delete += m_fNumNodes)
         {
@@ -1066,63 +1085,118 @@ void Mesh::getUniqueFaceNodeTags()
         }
     }
 
-    screen_display::write_vector_to_file("m_fNodeTags_2.txt", m_fNodeTags, m_fNumNodes);
+    //! TIMER END ///////////////////////////////////////////////////////////////////
+    auto end = std::chrono::system_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    screen_display::write_value("Elapsed time (getUniqueFaceNodeTags):", elapsed.count() * 1.0e-6, "s", BLUE);
+    //! //////////////////////////////////////////////////////////////////////////////
+
+    // screen_display::write_value("m_fNodeTags size", m_fNodeTags.size() / m_fNumNodes, "", BLUE);
+    // screen_display::write_value("m_fNodeTagsOrdered size", m_fNodeTagsOrdered.size() / m_fNumNodes, "", BLUE);
+    // screen_display::write_vector_to_file("m_fNodeTags_2.txt", m_fNodeTags, m_fNumNodes);
+    // screen_display::write_vector_to_file("node_tags.txt", m_fNodeTags, m_fNumNodes);
+    // screen_display::write_vector_to_file("m_fNodeTagsOrdered_1.txt", m_fNodeTagsOrdered, m_fNumNodes);
+
     // getchar();
-}
+} */
 
-void Mesh::getUniqueFaceNodeTags_test()
+void Mesh::getUniqueFaceNodeTags()
 {
-
-    std::vector<size_t> edge_tags, face_tags;
-    // std::vector<double> coord_tmp;
-    // std::vector<double> param_coord_tmp;
-    // gmsh::model::mesh::getNodes(node_tags, coord_tmp, param_coord_tmp);
-    // coord_tmp.clear();
-    // param_coord_tmp.clear();
-
-    std::vector<int> faceOrientations;
-    std::vector<int> edgeOrientations;
-
-    // m_fNodeTags.clear();
-
+    // Ordering per face for efficient comparison
     m_elFNodeTagsOrdered = m_elFNodeTags;
-
+// #pragma omp parallel for
     for (int i = 0; i < m_elFNodeTagsOrdered.size(); i += m_fNumNodes)
-        std::sort(m_elFNodeTagsOrdered.begin() + i, m_elFNodeTagsOrdered.begin() + (i + m_fNumNodes));
+        std::sort(std::execution::par, m_elFNodeTagsOrdered.begin() + i, m_elFNodeTagsOrdered.begin() + (i + m_fNumNodes));
 
+    screen_display::write_string("get Unique Face Node Tags", RED);
+
+    m_fNodeTags = m_elFNodeTags;
+    std::vector<size_t> m_fNodeTags_t;
+    std::vector<size_t> m_fNodeTags_tmp;
+    std::vector<std::vector<size_t>> m_fNodeTags_tab;
+    size_t fNumNativeNodes;
+
+    //! TIMER start ////////////////////////////////
+    auto start = std::chrono::system_clock::now();
+    //! ////////////////////////////////////////////
     if (m_fDim < 2)
     {
         screen_display::write_string("Create and get all egdes", BLUE);
+        std::vector<size_t> edge_tags;
         gmsh::model::mesh::createEdges();
-        gmsh::model::mesh::getAllEdges(edge_tags, m_fNodeTags);
+        gmsh::model::mesh::getAllEdges(edge_tags, m_fNodeTags_t);
+        fNumNativeNodes = 2;
 
-        // gmsh::model::mesh::getEdges(m_fNodeTags, edge_tags, edgeOrientations);
-        // screen_display::write_vector_to_file("edge_tags.txt", edge_tags, 3);
+        std::vector<std::vector<size_t>> m_fNodeTags_tab_full = vector_to_matrix(m_fNodeTags, m_fNumNodes);
+        std::vector<std::vector<size_t>> m_fNodeTags_t_tab = vector_to_matrix(m_fNodeTags_t, fNumNativeNodes);
 
-        // edgeOrientations.clear();
-        edge_tags.clear();
+        for (size_t i = 0; i < m_fNodeTags_tab_full.size(); i++)
+        {
+            for (size_t j = 0; j < m_fNodeTags_t_tab.size(); j++)
+            {
+                if (isNCoincidentValues2d(m_fNodeTags_tab_full[i], m_fNodeTags_t_tab[j]))
+                {
+                    m_fNodeTags_tab.push_back(m_fNodeTags_tab_full[i]);
+                    erase_row_from_matrix(m_fNodeTags_t_tab, j);
+                    break;
+                }
+            }
+        }
     }
     else
     {
         screen_display::write_string("Create and get all faces", BLUE);
+        std::vector<size_t> face_tags;
         gmsh::model::mesh::createFaces();
-        gmsh::model::mesh::getAllFaces(3, face_tags, m_fNodeTags);
-        face_tags.clear();
-        // faceOrientations.clear();
+        gmsh::model::mesh::getAllFaces(3, face_tags, m_fNodeTags_t);
+        fNumNativeNodes = 3;
+
+        std::vector<std::vector<size_t>> m_fNodeTags_tab_full = vector_to_matrix(m_fNodeTags, m_fNumNodes);
+        std::vector<std::vector<size_t>> m_fNodeTags_t_tab = vector_to_matrix(m_fNodeTags_t, fNumNativeNodes);
+
+         for (size_t i = 0; i < m_fNodeTags_tab_full.size(); i++)
+         {
+             for (size_t j = 0; j < m_fNodeTags_t_tab.size(); j++)
+             {
+                 if (isNCoincidentValues3d(m_fNodeTags_tab_full[i], m_fNodeTags_t_tab[j]))    
+                 {
+                     m_fNodeTags_tab.push_back(m_fNodeTags_tab_full[i]);
+                     erase_row_from_matrix(m_fNodeTags_t_tab, j);
+                     break;
+                 }
+             }
+         }
+
+        /* auto inner_loop = [&](std::vector<size_t> &V)
+        {
+            for (size_t j = 0; j < m_fNodeTags_t_tab.size(); j++)
+            {
+                if (isNCoincidentValues3d(V, m_fNodeTags_t_tab[j])) // fNumNativeNodes
+                {
+                    m_fNodeTags_tab.push_back(V);
+                    erase_row_from_matrix(m_fNodeTags_t_tab, j);
+                    break;
+                }
+            }
+        };
+        for_each(m_fNodeTags_tab_full.begin(), m_fNodeTags_tab_full.end(), inner_loop); */
     }
 
+    size_t tmp;
+    // m_fNodeTags.clear();
+    m_fNodeTags = matrix_to_vector(m_fNodeTags_tab, tmp);
+    // m_fNodeTagsOrdered.clear();
     m_fNodeTagsOrdered = m_fNodeTags;
-
     for (int i = 0; i < m_fNodeTagsOrdered.size(); i += m_fNumNodes)
-        std::sort(m_fNodeTagsOrdered.begin() + i, m_fNodeTagsOrdered.begin() + (i + m_fNumNodes));
+        std::sort(std::execution::par,m_fNodeTagsOrdered.begin() + i, m_fNodeTagsOrdered.begin() + (i + m_fNumNodes));
 
-    screen_display::write_vector_to_file("node_tags.txt", m_fNodeTags, 2);
-    // getchar();
+    screen_display::write_if_false(tmp == m_fNumNodes, "Bad dimension error...");
 
-    // gmsh::model::mesh::getEdges(m_fNodeTags, node_tags, edgeOrientations);
-    //   gmsh::model::mesh::getFaces(m_fType, m_elFNodeTags, m_fNodeTags,faceOrientations);
-    //  faceOrientations.clear();
-    // edgeOrientations.clear();
+    //! TIMER END ///////////////////////////////////////////////////////////////////
+    auto end = std::chrono::system_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    screen_display::write_value("Elapsed time (getUniqueFaceNodeTags_test):", elapsed.count() * 1.0e-6, "s", BLUE);
+    //! //////////////////////////////////////////////////////////////////////////////
 }
 
 /**

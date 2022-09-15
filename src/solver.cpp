@@ -266,7 +266,7 @@ namespace solver
          */
 
         std::ofstream outfile("residuals.txt");
-        outfile << "time;res_p;res_rho;res_vx;res_vy;res_vz" << std::endl;
+        outfile << "time;log(res_p);log(res_rho);log(res_vx);log(res_vy);log(res_vz)" << std::endl;
         auto start = std::chrono::system_clock::now();
         for (double t = config.timeStart, step = 0, tDisplay = 0; t <= config.timeEnd;
              t += config.timeStep, tDisplay += config.timeStep, ++step)
@@ -372,7 +372,7 @@ namespace solver
             {
                 residual[eq] /= (mesh.getElNum() * mesh.getElNumNodes());
                 std::cout << std::scientific << residual[eq] << "\t";
-                outfile << residual[eq] << ";";
+                outfile << log(residual[eq]) << ";";
             }
             std::cout << std::endl;
             outfile << std::endl;

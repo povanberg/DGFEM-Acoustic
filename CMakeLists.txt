@@ -1,4 +1,4 @@
-PROJECT(DGalerkin)
+PROJECT(DGalerkin CXX)
 CMAKE_MINIMUM_REQUIRED(VERSION 3.1)
 
 # put all generated files in a single folder (required in windows for exe linked to dlls)
@@ -8,14 +8,13 @@ MARK_AS_ADVANCED(LIBRARY_OUTPUT_PATH EXECUTABLE_OUTPUT_PATH)
 
 # build type is "" by default in Linux
 #IF(NOT CMAKE_BUILD_TYPE)
-    SET( CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+    SET(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 #ENDIF()
 
-# enable C++11
-SET(CMAKE_CXX_STANDARD 11) # newer way to set C++11 (requires cmake>3.1)
+# enable C++11/C++17
+SET(CMAKE_CXX_STANDARD 17) # newer way to set C++11/17 (requires cmake>3.1)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# compiler options
 IF(UNIX AND CMAKE_CXX_COMPILER_ID STREQUAL GNU)
     ADD_DEFINITIONS(-D_GLIBCXX_USE_CXX11_ABI=1)
 ELSEIF(CMAKE_CXX_COMPILER_ID MATCHES MSVC)
@@ -43,6 +42,7 @@ MESSAGE(STATUS "GMSH_LIBRARIES=" ${GMSH_LIBRARIES})
 IF(NOT GMSH_LIBRARIES)
     message(FATAL_ERROR "gmsh library not found!")
 ENDIF()
+
 
 # gmsh.exe
 FIND_PROGRAM(GMSH_EXECUTABLE gmsh)
@@ -79,6 +79,5 @@ endif()
 
 # Libraries
 INCLUDE_DIRECTORIES(include)
-
 # Sources
 ADD_SUBDIRECTORY(src)

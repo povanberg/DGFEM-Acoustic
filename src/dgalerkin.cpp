@@ -1,12 +1,15 @@
 #include <cstdio>
-#include <gmsh.h>
 #include <errno.h>
+#include <gmsh.h>
 #include <iostream>
 #include <omp.h>
 
+#include <parallel/algorithm>
+#include <parallel/settings.h>
+
 #include "Mesh.h"
-#include "solver.h"
 #include "configParser.h"
+#include "solver.h"
 
 int main(int argc, char **argv)
 {
@@ -17,6 +20,11 @@ int main(int argc, char **argv)
      *
      * e.g. ./dgarlerkin mymesh.msh myconfig.conf
      */
+
+    // __gnu_parallel::_Settings s;
+    // s.algorithm_strategy = __gnu_parallel::force_parallel;
+    // __gnu_parallel::_Settings::set(s);
+
     if (argc != 3)
     {
         return E2BIG;
@@ -45,12 +53,11 @@ int main(int argc, char **argv)
         double size = config.initConditions[i][4];
         double amp = config.initConditions[i][5];
 
-
         for (int n = 0; n < mesh.getNumNodes(); n++)
         {
             std::vector<double> coord, paramCoord;
             int _dim, _tag;
-            gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord,_dim, _tag);
+            gmsh::model::mesh::getNode(mesh.getElNodeTags()[n], coord, paramCoord, _dim, _tag);
             u[0][n] += amp * exp(-((coord[0] - x) * (coord[0] - x) +
                                    (coord[1] - y) * (coord[1] - y) +
                                    (coord[2] - z) * (coord[2] - z)) /

@@ -121,13 +121,13 @@ namespace solver
             /**
              *  Savings and prints
              */
-            
 
             if (tDisplay >= config.timeRate || step == 0)
             {
                 tDisplay = 0;
 
-                /** [1] Copy solution to match GMSH format */
+/** [1] Copy solution to match GMSH format */
+#pragma omp parallel for schedule(static) num_threads(config.numThreads)
                 for (int el = 0; el < mesh.getElNum(); ++el)
                 {
                     for (int n = 0; n < mesh.getElNumNodes(); ++n)
@@ -140,16 +140,13 @@ namespace solver
                         g_v[el][3 * n + 2] = u[3][elN];
                     }
                 }
-                //gmsh::view::addModelData(gp_viewTag, step, g_names[0], "ElementNodeData", elTags, g_p, t, 1);
-                //gmsh::view::addModelData(grho_viewTag, step, g_names[0], "ElementNodeData", elTags, g_rho, t, 1);
-                //gmsh::view::addModelData(gv_viewTag, step, g_names[0], "ElementNodeData", elTags, g_v, t, 3);
 
                 /** [2] Print and compute iteration time */
                 auto end = std::chrono::system_clock::now();
                 auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
                 gmsh::logger::write("[" + std::to_string(t) + "/" + std::to_string(config.timeEnd) + "s] Step number : " + std::to_string((int)step) + ", Elapsed time: " + std::to_string(elapsed.count()) + "s");
                 screen_display::write_string("time\t\tres_p\t\tres_rho\t\tres_vx\t\tres_vy\t\tres_vz", BOLDBLUE);
-                //mesh.writeVTK("result.vtk");
+                // mesh.writeVTK("result.vtk");
                 std::string vtu_filename = "results/result" + std::to_string((int)step) + ".vtu";
                 mesh.writeVTU(vtu_filename, u);
             }
@@ -174,15 +171,21 @@ namespace solver
             mesh.updateFlux(u, Flux, config.v0, config.c0, config.rho0);
             numStep(mesh, config, u, Flux, 1);
 
+#pragma omp parallel for schedule(static) num_threads(config.numThreads)
             for (int el = 0; el < mesh.getElNum(); ++el)
             {
                 for (int n = 0; n < mesh.getElNumNodes(); ++n)
                 {
                     int elN = el * elNumNodes + n;
+#pragma omp atomic
                     residual[0] += pow(g_p[el][n] - u[0][elN], 2);
+#pragma omp atomic
                     residual[1] += pow(g_rho[el][n] - u[0][elN] / (config.c0 * config.c0), 2);
+#pragma omp atomic
                     residual[2] += pow(g_v[el][3 * n + 0] - u[1][elN], 2);
+#pragma omp atomic
                     residual[3] += pow(g_v[el][3 * n + 1] - u[2][elN], 2);
+#pragma omp atomic
                     residual[4] += pow(g_v[el][3 * n + 2] - u[3][elN], 2);
                 }
             }
@@ -199,9 +202,9 @@ namespace solver
         }
 
         /** Save to file */
-        //gmsh::view::write(gp_viewTag, config.saveFile, true);
-        //gmsh::view::write(grho_viewTag, config.saveFile, true);
-        //gmsh::view::write(gv_viewTag, config.saveFile, true);
+        // gmsh::view::write(gp_viewTag, config.saveFile, true);
+        // gmsh::view::write(grho_viewTag, config.saveFile, true);
+        // gmsh::view::write(gv_viewTag, config.saveFile, true);
         outfile.close();
     }
 
@@ -279,8 +282,9 @@ namespace solver
             {
                 tDisplay = 0;
 
-                /** [1] Copy solution to match GMSH format */
-                // #pragma omp parallel for
+/** [1] Copy solution to match GMSH format */
+// #pragma omp parallel for
+#pragma omp parallel for schedule(static) num_threads(config.numThreads)
                 for (int el = 0; el < mesh.getElNum(); ++el)
                 {
                     for (int n = 0; n < mesh.getElNumNodes(); ++n)
@@ -302,7 +306,7 @@ namespace solver
                 auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
                 gmsh::logger::write("[" + std::to_string(t) + "/" + std::to_string(config.timeEnd) + "s] Step number : " + std::to_string((int)step) + ", Elapsed time: " + std::to_string(elapsed.count()) + "s");
                 screen_display::write_string("time\t\tres_p\t\tres_rho\t\tres_vx\t\tres_vy\t\tres_vz", BOLDBLUE);
-                //mesh.writeVTK("result.vtk");
+                // mesh.writeVTK("result.vtk");
                 std::string vtu_filename = "results/result" + std::to_string((int)step) + ".vtu";
                 mesh.writeVTU(vtu_filename, u);
                 // mesh.writeVTK("result.vtk",u);
@@ -353,16 +357,21 @@ namespace solver
                 }
             }
 
-            // #pragma omp parallel for
+#pragma omp parallel for schedule(static) num_threads(config.numThreads)
             for (int el = 0; el < mesh.getElNum(); ++el)
             {
                 for (int n = 0; n < mesh.getElNumNodes(); ++n)
                 {
                     int elN = el * elNumNodes + n;
+#pragma omp atomic
                     residual[0] += pow(g_p[el][n] - u[0][elN], 2);
+#pragma omp atomic
                     residual[1] += pow(g_rho[el][n] - u[0][elN] / (config.c0 * config.c0), 2);
+#pragma omp atomic
                     residual[2] += pow(g_v[el][3 * n + 0] - u[1][elN], 2);
+#pragma omp atomic
                     residual[3] += pow(g_v[el][3 * n + 1] - u[2][elN], 2);
+#pragma omp atomic
                     residual[4] += pow(g_v[el][3 * n + 2] - u[3][elN], 2);
                 }
             }
@@ -378,11 +387,6 @@ namespace solver
             outfile << std::endl;
         }
 
-        /** Save to file */
-        // gmsh::view::write(gp_viewTag, config.saveFile, true);
-        // gmsh::view::write(gp_viewTag, "results.vtk", true);
-        // gmsh::view::write(grho_viewTag, config.saveFile, true);
-        // gmsh::view::write(gv_viewTag, config.saveFile, true);
         outfile.close();
     }
 }

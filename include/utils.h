@@ -63,7 +63,7 @@ namespace screen_display
         outfile.close();
     }
 
-    template<typename T> void write_vector_to_file(std::string file_name, std::vector<std::vector<T>> mat)
+    template<typename T> void write_matrix_to_file(std::string file_name, std::vector<std::vector<T>> mat)
     {
         std::ofstream outfile(file_name.c_str());
         write_string("writing value in "+file_name);

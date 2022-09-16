@@ -178,6 +178,7 @@ public:
     void precomputeFlux(std::vector<double> &u, std::vector<std::vector<double>> &Flux, int eq);
     void getElFlux(size_t el, double *F);
     void getUniqueFaceNodeTags();
+    void getConnectivityFaceToElement();
     // void getUniqueFaceNodeTags_test();
     void getElStiffVector(size_t el, std::vector<std::vector<double>> &Flux,
                           std::vector<double> &u, double *elStiffVector);
@@ -297,14 +298,28 @@ bool isNCoincidentValues3d(std::vector<T> &vec1, std::vector<T> &vec2)
 template <typename T>
 bool isNCoincidentValues2d(std::vector<T> &vec1, std::vector<T> &vec2)
 {
-    return ((vec1[0] == vec2[0]) && (vec1[1] == vec2[1]))||
+    return ((vec1[0] == vec2[0]) && (vec1[1] == vec2[1])) ||
            ((vec1[0] == vec2[1]) && (vec1[1] == vec2[0]));
+}
+
+template <typename T>
+bool isNCoincidentValues(std::vector<T> &vec1, std::vector<T> &vec2, size_t Num)
+{
+    // bool value(true);
+    // #pragma omp parallel for reduction(*:value)
+    //     for (size_t i=0; i<Num;i++)
+    //         value *= (vec1[i] == vec2[i]);
+
+    // value = std::equal(std::execution::seq, vec1.begin(), vec1.end(), vec2.begin());
+
+    return std::equal(std::execution::seq, vec1.begin(), vec1.end(), vec2.begin());
 }
 
 template <typename T>
 std::vector<std::vector<T>> vector_to_matrix(std::vector<T> &vec, size_t offset = 2)
 {
     std::vector<std::vector<T>> mat;
+
     for (size_t i = 0; i < vec.size(); i += offset)
     {
         std::vector<size_t> row;
@@ -316,6 +331,18 @@ std::vector<std::vector<T>> vector_to_matrix(std::vector<T> &vec, size_t offset 
     }
     return mat;
 }
+
+// template <typename T>
+std::vector<size_t> vector_of_tags(size_t vec_size, size_t offset);
+// {
+//     std::vector<size_t> value;
+//     for (size_t i = 0,id=0; i < vec_size; i++, id+=(i%offset))
+//     {
+//         std::cout<<id<<std::endl;
+//         value.push_back(id);
+//     }
+//     return value;
+// }
 
 template <typename T>
 std::vector<T> matrix_to_vector(std::vector<std::vector<T>> &mat, size_t &offset)
@@ -338,148 +365,10 @@ void erase_row_from_matrix(std::vector<std::vector<T>> &mat, size_t &row_id)
     mat.erase(std::next(std::begin(mat), row_id));
 }
 
-namespace boost
-{
-    template <typename T>
-    size_t hash_value(const boost::reference_wrapper<T> &v)
-    {
-        return boost::hash_value(v.get());
-    }
-    template <typename T>
-    bool operator==(const boost::reference_wrapper<T> &lhs, const boost::reference_wrapper<T> &rhs)
-    {
-        return lhs.get() == rhs.get();
-    }
-}
-
-// destructive, but fast if the original copy is no longer required
 template <typename T>
-void uniqueRows_inplace(std::vector<std::vector<T>> &A)
+void erase_row_from_vector(std::vector<T> &vec, size_t &id)
 {
-    boost::unordered_set<boost::reference_wrapper<std::vector<T> const>> unique(A.size());
-    for (BOOST_AUTO(it, A.begin()); it != A.end();)
-    {
-        if (unique.insert(boost::cref(*it)).second)
-        {
-            ++it;
-        }
-        else
-        {
-            A.erase(it);
-        }
-    }
-}
-
-// returning a copy (extra copying cost)
-template <typename T>
-void uniqueRows_copy(const std::vector<std::vector<T>> &A,
-                     std::vector<std::vector<T>> &ret)
-{
-    ret.reserve(A.size());
-    boost::unordered_set<boost::reference_wrapper<std::vector<T> const>> unique;
-    BOOST_FOREACH (const std::vector<T> &row, A)
-    {
-        if (unique.insert(boost::cref(row)).second)
-        {
-            ret.push_back(row);
-        }
-    }
-}
-
-template <typename T>
-void uniqueRows(const std::vector<std::vector<T>> &A,
-                std::vector<std::vector<T>> &ret)
-{
-    // Go through a vector<vector<T> > and find the unique rows
-    // have a value ind for each row that is 1/0 indicating if a value
-    // has been previously searched.
-
-    // cur : current item being compared to every item
-    // num : number of values searched for.  Once all the values in the
-    //  matrix have been searched, terminate.
-
-    size_t N = A.size();
-    size_t num = 1, cur = 0, it = 1;
-    std::vector<unsigned char> ind(N, 0);
-    std::deque<size_t> ulist; // create a deque to store the unique inds
-
-    ind[cur] = 1;
-    ulist.push_back(0); // ret.push_back(A[0]);
-
-    while (num < N)
-    {
-
-        if (it >= N)
-        {
-            ++cur; // find next non-duplicate value, push back
-            while (ind[cur])
-                ++cur;
-
-            ulist.push_back(cur); // ret.push_back(A[cur]);
-            ++num;
-            it = cur + 1; // start search for duplicates at the next row
-
-            if (it >= N && num == N)
-                break;
-        }
-
-        if (!ind[it] && A[cur] == A[it])
-        {
-            ind[it] = 1; // mark as duplicate
-            ++num;
-        }
-        ++it;
-    } // ~while num
-
-    // loop over the deque and .push_back the unique vectors
-    std::deque<size_t>::iterator iter;
-    const std::deque<size_t>::iterator end = ulist.end();
-    ret.reserve(ulist.size());
-
-    for (iter = ulist.begin(); iter != end; ++iter)
-    {
-        ret.push_back(A[*iter]);
-    }
-}
-
-template <typename T>
-inline bool isInList(const std::deque<std::vector<T>> &A,
-                     const std::vector<T> &b)
-{
-    typename std::deque<std::vector<T>>::const_iterator it;
-    const typename std::deque<std::vector<T>>::const_iterator end = A.end();
-
-    for (it = A.begin(); it != end; ++it)
-    {
-        if (*it == b)
-            return true;
-    }
-    return false;
-}
-
-template <typename T>
-void uniqueRows1(const ::std::vector<std::vector<T>> &A,
-                 std::vector<std::vector<T>> &ret)
-{
-    typename std::deque<std::vector<T>> ulist;
-    typename std::vector<std::vector<T>>::const_iterator it = A.begin();
-    const typename std::vector<std::vector<T>>::const_iterator end = A.end();
-
-    ulist.push_back(*it);
-
-    for (++it; it != end; ++it)
-    {
-        if (!isInList(ulist, *it))
-        {
-            ulist.push_back(*it);
-        }
-    }
-    ret.reserve(ulist.size());
-
-    for (size_t i = 0; i != ulist.size(); ++i)
-    {
-        ret.push_back(ulist[i]);
-    }
+    vec.erase(std::next(std::begin(vec), id));
 }
 
 #endif // DGALERKIN_MESH_H

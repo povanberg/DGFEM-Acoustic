@@ -6,4 +6,4 @@
 build/bin/dgalerkin doc/2d/square.msh doc/config/Square.conf
 # build/bin/dgalerkin doc/3d/cube.msh doc/config/Cube.conf
 # build/bin/dgalerkin doc/3d/sphere.msh doc/config/Cube.conf
-# build/bin/dgalerkin doc/2d/Urban.msh doc/config/Urban.conf
+# build/bin/dgalerkin doc/3d/Urban_3D.msh doc/config/Urban_3D.conf

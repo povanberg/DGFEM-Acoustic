@@ -1,7 +1,7 @@
 # DGFEM for Acoustic Wave Propagation 
 
-[![version](https://img.shields.io/badge/version-1.3.1-red)](https://github.com/skhelladi/DGFEM-CAA/releases/tag/v1.3.1) 
-[![compilers](https://img.shields.io/badge/c++-14%20|%2017%20|%2020-27ae60.svg)](https://github.com/skhelladi/DGFEM-CAA/releases/tag/v1.3.1) 
+[![version](https://img.shields.io/badge/version-1.3.3-red)](https://github.com/skhelladi/DGFEM-CAA/releases/tag/v1.3.3) 
+[![compilers](https://img.shields.io/badge/c++-17%20|%2020-27ae60.svg)](https://github.com/skhelladi/DGFEM-CAA/releases/tag/v1.3.3) 
 
 This repository implements a discontinuous Galerkin finite element method (DGFEM) applied to the linearized Euler equations and the acoustic perturbation equations. The solver is based on [GMSH](http://gmsh.info/) library and supports a wide range of features:
 

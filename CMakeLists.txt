@@ -1,5 +1,5 @@
-PROJECT(DGalerkin CXX)
 CMAKE_MINIMUM_REQUIRED(VERSION 3.1)
+PROJECT(DGalerkin VERSION 1.3.3)
 
 # put all generated files in a single folder (required in windows for exe linked to dlls)
 SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin CACHE PATH "")
